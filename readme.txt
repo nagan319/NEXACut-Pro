@@ -6,4 +6,4 @@ CNC stock stored in SVG format
 Use of OpenCV allows for easy addition of already used stock
 Files for new parts converted from STL to SVG format
 Part placement is optimized by a genetic nesting algorithm
-*Possible integration with SolidWorks API for full automation
+*Possible integration of SolidWorks API for full automation
