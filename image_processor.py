@@ -46,7 +46,7 @@ class ImageProcessor:
             file_path = os.path.join(preview_path, file_name)
             os.remove(file_path)
 
-    # these directly save images
+    # raw image generation
 
     def save_external_image_as_raw(self, path): # this assumes reading an image from the tray, i.e. file checks not necessary
 
@@ -65,6 +65,34 @@ class ImageProcessor:
 
             self.processing_resolution = image.shape[:2]
             self.state = raw_state
+
+    def resize_image(self, image, max_width: int, max_height: int): # resizes image to fit within max dimensions
+        
+        try:
+            if max_width < 0 or max_width > processing_max_width:
+                raise ValueError(f"New width value must be within range 0-"+processing_max_width)
+            if max_height < 0 or max_height > processing_max_height:
+                raise ValueError(f"New height value must be within range 0-"+processing_max_height)
+            if len(image.shape) < 2 or len(image.shape) > 3:
+                raise ValueError(f"Invalid image array")
+            
+        except(ValueError) as e:
+            print(e)
+            return
+        
+        else:
+            initial_height, initial_width = image.shape[:2]
+
+            scale_factor = min(max_width / initial_width, max_height / initial_height)
+
+            new_width = round(initial_width * scale_factor)
+            new_height = round(initial_height * scale_factor)
+            new_dim = (new_width, new_height)
+
+            resized_img = cv2.resize(image, new_dim, interpolation=cv2.INTER_LANCZOS4) # high quality interpolation
+            return resized_img
+
+    # binary image generation
 
     def save_binary_image(self, threshold_value: int = 100): # saves binary image 
 
@@ -89,6 +117,8 @@ class ImageProcessor:
 
             cv2.imwrite(preview_path + binary_extension, image) # saves all images as png
             self.state = binary_state
+
+    # feature generation
 
     def save_contour_image(self): # draws contours on image
         
@@ -121,73 +151,8 @@ class ImageProcessor:
             cv2.imwrite(preview_path + contour_extension, contour_canvas)
             self.state = contour_state
 
-    def save_flattened_image(self):
-        contour_image_path = preview_path + contour_extension
+    # automatic feature detection
 
-        try:
-            if not os.path.exists(contour_image_path):
-                raise FileNotFoundError(f"The file {contour_image_path} does not exist")
-            if self.state < contour_state:
-                raise FileNotFoundError("No image to flatten")
-            elif self.state > contour_state:
-                raise FileExistsError("Flattened image already finalized")
-            if self.largest_contour:
-                raise ValueError("Image contour not defined")
-            if len(self.corners) != 4:
-                raise ValueError("Image must have 4 corners")
-
-        except(FileNotFoundError, FileExistsError, ValueError) as e:
-            print(e)
-            return
-        
-        else:
-            image = cv2.imread(contour_image_path, cv2.IMREAD_COLOR)
-            self.sort_corners()
-
-            width, height = self.output_resolution
-            top_left = [0, 0]
-            top_right = [width, 0]
-            bottom_right = [width, height]
-            bottom_left = [0, height]
-
-            final_corner_points = np.array([top_left, top_right, bottom_left, bottom_right], dtype=np.float32)
-
-            transformation_matrix = self.get_transformation_matrix(self.corners, final_corner_points) # maps corners to new locations
-            image = cv2.warpPerspective(image, transformation_matrix, (width, height))
-            image = self.hide_unnecessary_features(image)
-
-            flattened_image_path = preview_path+flattened_extension
-            cv2.imwrite(flattened_image_path, image)
-            self.state = flattened_state
-
-    # helper methods called in the process
-
-    def resize_image(self, image, max_width: int, max_height: int): # resizes image to fit within max dimensions
-        
-        try:
-            if max_width < 0 or max_width > processing_max_width:
-                raise ValueError(f"New width value must be within range 0-"+processing_max_width)
-            if max_height < 0 or max_height > processing_max_height:
-                raise ValueError(f"New height value must be within range 0-"+processing_max_height)
-            if len(image.shape) < 2 or len(image.shape) > 3:
-                raise ValueError(f"Invalid image array")
-            
-        except(ValueError) as e:
-            print(e)
-            return
-        
-        else:
-            initial_height, initial_width = image.shape[:2]
-
-            scale_factor = min(max_width / initial_width, max_height / initial_height)
-
-            new_width = round(initial_width * scale_factor)
-            new_height = round(initial_height * scale_factor)
-            new_dim = (new_width, new_height)
-
-            resized_img = cv2.resize(image, new_dim, interpolation=cv2.INTER_LANCZOS4) # high quality interpolation
-            return resized_img
-    
     def detect_features(self):
         binary_image_path = preview_path + binary_extension
 
@@ -313,46 +278,8 @@ class ImageProcessor:
     
             return filtered_corners
 
-    def sort_corners(self): # check already done in method call
-        centroid_x = sum(point[0] for point in self.corners) / len(self.corners)
-        centroid_y = sum(point[1] for point in self.corners) / len(self.corners)
-        sorted_corners = np.copy(self.corners)
-
-        for corner in sorted_corners:
-            x, y = corner
-            if x < centroid_x and y < centroid_y: # top left
-                sorted_corners[0] = corner
-            elif x > centroid_x and y < centroid_y: # top right
-                sorted_corners[1] = corner
-            elif x < centroid_x and y > centroid_y: # bottom left
-                sorted_corners[2] = corner
-            else:
-                sorted_corners[3] = corner
+    # manual feature editing
         
-        self.corners = sorted_corners
-
-    def get_transformation_matrix(self, src_points: np.array, dst_points: np.array): # check already in method call
-        src_points = np.array(src_points, dtype=np.float32)
-        dst_points = np.array(dst_points, dtype=np.float32)
-        return cv2.getPerspectiveTransform(src_points, dst_points)
-
-    def hide_unnecessary_features(self, image): # applies mask to get rid of excess contours
-        black = np.array([0, 0, 0]) 
-        range = 32
-
-        contour_min = np.clip(np.array(self.contour_color) - range, 0, 255)
-        contour_max = np.clip(np.array(self.contour_color) + range, 0, 255)
-
-        mask_bg = cv2.inRange(image, black, black)
-        mask_contour = cv2.inRange(image, contour_min, contour_max)
-
-        combined_mask = cv2.bitwise_or(mask_bg, mask_contour)
-        result = cv2.bitwise_and(image, image, mask=combined_mask)
-
-        return result
-
-    # image editing methods
-
     def select_corner(self, n: int):
         try:
             if self.corners is None:
@@ -429,3 +356,82 @@ class ImageProcessor:
         else:
             self.contours.pop(self.selected_contour)
             self.unselect_contour()
+
+    # flattened image generation
+
+    def save_flattened_image(self):
+        contour_image_path = preview_path + contour_extension
+
+        try:
+            if not os.path.exists(contour_image_path):
+                raise FileNotFoundError(f"The file {contour_image_path} does not exist")
+            if self.state < contour_state:
+                raise FileNotFoundError("No image to flatten")
+            elif self.state > contour_state:
+                raise FileExistsError("Flattened image already finalized")
+            if self.largest_contour:
+                raise ValueError("Image contour not defined")
+            if len(self.corners) != 4:
+                raise ValueError("Image must have 4 corners")
+
+        except(FileNotFoundError, FileExistsError, ValueError) as e:
+            print(e)
+            return
+        
+        else:
+            image = cv2.imread(contour_image_path, cv2.IMREAD_COLOR)
+            self.sort_corners()
+
+            width, height = self.output_resolution
+            top_left = [0, 0]
+            top_right = [width, 0]
+            bottom_right = [width, height]
+            bottom_left = [0, height]
+
+            final_corner_points = np.array([top_left, top_right, bottom_left, bottom_right], dtype=np.float32)
+
+            transformation_matrix = self.get_transformation_matrix(self.corners, final_corner_points) # maps corners to new locations
+            image = cv2.warpPerspective(image, transformation_matrix, (width, height))
+            image = self.hide_unnecessary_features(image)
+
+            flattened_image_path = preview_path+flattened_extension
+            cv2.imwrite(flattened_image_path, image)
+            self.state = flattened_state
+
+    def sort_corners(self): # check already done in method call
+        centroid_x = sum(point[0] for point in self.corners) / len(self.corners)
+        centroid_y = sum(point[1] for point in self.corners) / len(self.corners)
+        sorted_corners = np.copy(self.corners)
+
+        for corner in sorted_corners:
+            x, y = corner
+            if x < centroid_x and y < centroid_y: # top left
+                sorted_corners[0] = corner
+            elif x > centroid_x and y < centroid_y: # top right
+                sorted_corners[1] = corner
+            elif x < centroid_x and y > centroid_y: # bottom left
+                sorted_corners[2] = corner
+            else:
+                sorted_corners[3] = corner
+        
+        self.corners = sorted_corners
+
+    def get_transformation_matrix(self, src_points: np.array, dst_points: np.array): # check already in method call
+        src_points = np.array(src_points, dtype=np.float32)
+        dst_points = np.array(dst_points, dtype=np.float32)
+        return cv2.getPerspectiveTransform(src_points, dst_points)
+
+    def hide_unnecessary_features(self, image): # applies mask to get rid of excess contours
+        black = np.array([0, 0, 0]) 
+        range = 32
+
+        contour_min = np.clip(np.array(self.contour_color) - range, 0, 255)
+        contour_max = np.clip(np.array(self.contour_color) + range, 0, 255)
+
+        mask_bg = cv2.inRange(image, black, black)
+        mask_contour = cv2.inRange(image, contour_min, contour_max)
+
+        combined_mask = cv2.bitwise_or(mask_bg, mask_contour)
+        result = cv2.bitwise_and(image, image, mask=combined_mask)
+
+        return result
