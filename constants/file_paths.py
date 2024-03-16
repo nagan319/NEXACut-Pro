@@ -1,0 +1,5 @@
+USER_PREFERENCE_PATH = 'Preferences/user_preferences.json'
+DEFAULT_PREFERENCE_PATH = 'Preferences/default_preferences.json'
+ROUTERS_DIRECTORY = 'Routers/'
+STOCK_DIRECTORY = 'Stock/'
+IMAGE_PREVIEW_PATH = 'Image Preview/'
