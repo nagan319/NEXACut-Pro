@@ -1,7 +1,7 @@
 import os
 import json
 import shutil
-from constants.file_paths import STOCK_DIRECTORY
+from constants import STOCK_DIRECTORY
 
 from stock import Stock
 

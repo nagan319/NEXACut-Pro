@@ -1,4 +1,4 @@
-SUPPORTED_FORMATS = ['bmp', 'dib', 'jpeg', 'jpg', 'jp2', 'png', 'webp', 'avif']
+SUPPORTED_IMAGE_FORMATS = ['bmp', 'dib', 'jpeg', 'jpg', 'jp2', 'png', 'webp', 'avif']
 MAX_PROCESSING_WIDTH = 2000
 MAX_PROCESSING_HEIGHT = 2000
 MAX_PPMM = 4 # pixels/mm for final image

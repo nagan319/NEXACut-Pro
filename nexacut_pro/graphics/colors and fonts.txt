@@ -1,0 +1,7 @@
+logo font: bahnschrift semibold semicondensed
+
+white: 255 255 255 (#ffffff)
+gray: 191 191 191 (#bfbfbf)
+red: 208 0 0 (#cc0000)
+
+background gray: 40 40 40 (#282828)

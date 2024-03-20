@@ -1,13 +1,13 @@
 import os
+import sys
 import numpy as np
 import cv2
 from typing import Tuple
 
-from constants.image_conversion import *
-from constants.hardware import PLATE_MAX_DIMENSION
+from constants import PLATE_MAX_DIMENSION, MAX_PPMM, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT, NONE_STATE, RAW_STATE, BINARY_STATE, CONTOUR_STATE, FLATTENED_STATE, RAW_EXTENSION, BINARY_EXTENSION, CONTOUR_EXTENSION, FLATTENED_EXTENSION, PREVIEW_FOLDER_PATH
 
-from .img_io import *
-from .img_proc import *
+import img_io
+import img_proc
 from .feat_mgr import FeatureManager
 
 # image file only bounded to plate after svg is generated
@@ -53,32 +53,32 @@ class ImageConversionManager:
 
     def reset_preview(self):
         try:
-            clear_all_files(PREVIEW_FOLDER_PATH)
-        except(FileNotFoundError) as e:
+            img_io.clear_all_files(PREVIEW_FOLDER_PATH)
+        except(Exception) as e:
             print(e)
 
     def save_external_image_as_raw(self, external_image_path): 
         try:
             self._check_state(NONE_STATE, NONE_STATE)
-            image = read_image(external_image_path, True)
-            image = resize_image(image, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT)
-            write_image(PREVIEW_FOLDER_PATH, RAW_EXTENSION, image)
+            image = img_io.read_image(external_image_path, True)
+            image = img_proc.resize_image(image, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT)
+            img_io.write_image(PREVIEW_FOLDER_PATH, RAW_EXTENSION, image)
             self.state = RAW_STATE
                 
-        except(ValueError, FileExistsError, FileNotFoundError) as e:
+        except(Exception) as e:
             print(e)
 
     def save_binary_image(self, threshold_value: int = 100): 
         try:
             self._check_state(RAW_STATE, BINARY_STATE)
             raw_image_path = os.path.join(PREVIEW_FOLDER_PATH, RAW_EXTENSION)
-            image = read_image(raw_image_path, True)
-            image = convert_image_to_binary(image, threshold_value)
-            write_image(PREVIEW_FOLDER_PATH, BINARY_EXTENSION, image)
+            image = img_io.read_image(raw_image_path, True)
+            image = img_proc.convert_image_to_binary(image, threshold_value)
+            img_io.write_image(PREVIEW_FOLDER_PATH, BINARY_EXTENSION, image)
             self.processing_resolution = image.shape[:2]
             self.state = BINARY_STATE
         
-        except(ValueError, FileExistsError, FileNotFoundError) as e:
+        except(Exception) as e:
             print(e)
             
     def save_contour_image(self): # saves blank canvas with contours
@@ -86,10 +86,10 @@ class ImageConversionManager:
             self._check_state(BINARY_STATE, BINARY_STATE)
             self.feature_manager.draw_features()
             image = self.feature_manager.feature_canvas
-            write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
+            img_io.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
             self.state = CONTOUR_STATE
         
-        except(ValueError, FileExistsError, FileNotFoundError, NameError) as e:
+        except(Exception) as e:
             print(e)
 
     def __initialize_feature_manager(self):
@@ -103,12 +103,12 @@ class ImageConversionManager:
         try:
             self._check_state(BINARY_STATE, CONTOUR_STATE)
             binary_image_path = os.path.join(PREVIEW_FOLDER_PATH, BINARY_EXTENSION)
-            image = read_image(binary_image_path, True)
+            image = img_io.read_image(binary_image_path, True)
             self.__initialize_feature_manager()
             self.feature_manager.get_features(image)
-            write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
+            img_io.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
 
-        except(FileNotFoundError, FileExistsError, ValueError, NameError) as e:
+        except(Exception) as e:
             print(e)
 
     def save_flattened_image(self):
@@ -116,7 +116,7 @@ class ImageConversionManager:
             
             self._check_state(CONTOUR_STATE)
             contour_image_path = os.path.join(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION)
-            image = read_image(contour_image_path, True)
+            image = img_io.read_image(contour_image_path, True)
             width, height = self.output_resolution
 
             top_left = [0, 0]
@@ -127,12 +127,12 @@ class ImageConversionManager:
             initial_corner_points = self.feature_manager.corners
             final_corner_points = np.array([top_left, top_right, bottom_left, bottom_right], dtype=np.float32)
 
-            transformation_matrix = get_transformation_matrix(initial_corner_points, final_corner_points)
-            image = warp_perspective(image, transformation_matrix, (width, height))
-            image = apply_color_mask(image, self.background_color, self.contour_color)
+            transformation_matrix = img_proc.get_transformation_matrix(initial_corner_points, final_corner_points)
+            image = img_proc.warp_perspective(image, transformation_matrix, (width, height))
+            image = img_proc.apply_color_mask(image, self.background_color, self.contour_color)
 
-            write_image(PREVIEW_FOLDER_PATH, FLATTENED_EXTENSION, image)
+            img_io.write_image(PREVIEW_FOLDER_PATH, FLATTENED_EXTENSION, image)
             self.state = FLATTENED_STATE
             
-        except(FileNotFoundError, FileExistsError, ValueError, NameError, TypeError) as e:
+        except(Exception) as e:
             print(e)    
