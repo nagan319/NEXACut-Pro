@@ -4,7 +4,7 @@ import numpy as np
 from collections import defaultdict
 from stl import mesh
 
-from constants import MIN_QUANTIZED_VALUE, MIN_VALUE_DECIMAL_DIGITS
+from .constants import MIN_QUANTIZED_VALUE, MIN_VALUE_DECIMAL_DIGITS
 
 def is_valid_stl(file_path):
     if not os.path.exists(file_path):

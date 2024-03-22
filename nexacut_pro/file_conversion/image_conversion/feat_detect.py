@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from typing import Tuple
 
-from constants import MIN_CONTOUR_AREA, MIN_CONTOUR_DISTANCE_FROM_EDGE, CORNER_SEARCH_POINT_DELTA, MIN_CORNER_ANGLE, MIN_CORNER_SEPARATION
+from .constants import MIN_CONTOUR_AREA, MIN_CONTOUR_DISTANCE_FROM_EDGE, CORNER_SEARCH_POINT_DELTA, MIN_CORNER_ANGLE, MIN_CORNER_SEPARATION
 
 def detect_contours(image, processing_resolution) -> Tuple[list, list]: # returns (all contours except max, max contour)
         

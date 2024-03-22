@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from typing import Tuple
 
-from constants import MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT, COLOR_DELETION_THRESHOLD
+from .constants import MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT, COLOR_DELETION_THRESHOLD
 
 def resize_image(image, max_width: int, max_height: int): # resizes image to fit within max dimensions
         

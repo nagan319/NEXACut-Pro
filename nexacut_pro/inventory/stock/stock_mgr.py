@@ -1,9 +1,9 @@
 import os
 import json
 import shutil
-from constants import STOCK_DIRECTORY
 
-from stock import Stock
+from .constants import STOCK_DIRECTORY
+from .stock import Stock
 
 class StockManager:
 

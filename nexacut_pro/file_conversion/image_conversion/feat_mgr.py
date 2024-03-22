@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from typing import Tuple
 
-from feat_detect import detect_contours, detect_corners
+from .feat_detect import detect_contours, detect_corners
 
 class FeatureManager:
     
