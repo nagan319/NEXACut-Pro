@@ -1,0 +1,16 @@
+QPushButton {
+    background-color: #1E1E1E; 
+    color: #BFBFBF; 
+    font-family: "Helvetica Neue"; 
+    font-size: 16px; 
+    border: 0px; 
+    border-radius: 0px; 
+    padding: 16px;
+    text-align: left;
+} 
+QPushButton:hover {
+    background-color: #3C3C3C;
+}
+QPushButton:checked {
+    background-color: #4D4D4D;
+}

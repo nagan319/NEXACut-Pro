@@ -2,61 +2,80 @@ import os
 import json
 from typing import Tuple
 
-from .constants import ROUTER_MAX_DIMENSION, PLATE_MAX_DIMENSION, DRILL_BIT_MAX_DIAMETER, MILL_BIT_MAX_DIAMETER, ROUTERS_DIRECTORY
+ROUTER_MAX_DIMENSION = 5000 # all constants in mm
+PLATE_MAX_DIMENSION = 5000
+DRILL_BIT_MAX_DIAMETER = 100
+MILL_BIT_MAX_DIAMETER = 100
+
+ROUTER_DEFAULT_DIMENSION = 1000
+PLATE_DEFAULT_DIMENSION = 1000
+DEFAULT_SAFE_DISTANCE = 50
+DRILL_BIT_DEFAULT_DIAMETER = 5
+MILL_BIT_DEFAULT_DIAMETER = 10
 
 class RouterManager:
 
-    def new_router(self, name: str, machineable_area: Tuple[int, int, int], max_plate_size: Tuple[int, int, int], min_safe_distance_from_edge: int, drill_bit_diameter: float, mill_bit_diameter: float): # adds new router, saves as json
+    def __init__(self, router_data_folder: str):
+        self.router_directory = router_data_folder
+        self.value_ranges = self._load_value_ranges()
+        self.update_properties()
 
+    def update_properties(self):
+        self.routers = os.listdir(self.router_directory)
+        self.selected_router_idx = None
+
+    def _load_value_ranges(self): # does not include name (not stored inside json)
+        return {
+            "machineable_area_(x-axis)": (0, ROUTER_MAX_DIMENSION), 
+            "machineable_area_(y-axis)": (0, ROUTER_MAX_DIMENSION), 
+            "machineable_area_(z-axis)": (0, ROUTER_MAX_DIMENSION), 
+            "max_plate_size_(x-axis)": (0, PLATE_MAX_DIMENSION),
+            "max_plate_size_(y-axis)": (0, PLATE_MAX_DIMENSION),
+            "max_plate_size_(z-axis)": (0, PLATE_MAX_DIMENSION),
+            "min_safe_distance_from_edge": (0, ROUTER_MAX_DIMENSION//2),
+            "drill_bit_diameter": (0, DRILL_BIT_MAX_DIAMETER),
+            "mill_bit_diameter": (0, MILL_BIT_MAX_DIAMETER)
+        }
+
+    def select_router(self, idx: int):
+        target_router_path = os.path.join(self.router_directory, self.routers[idx])
+        self.load_router_properties(target_router_path)
+
+    def load_router_properties(self, router_path: str):
+        if os.path.exists(router_path):
+            with open(router_path, 'r') as f:
+                self.router_data = json.load(f)
+
+    def add_router(self, name: str):
         name_with_extension = name+'.json'
-        new_router_path = os.path.join(ROUTERS_DIRECTORY, name_with_extension)
-
-        # checks for all input data
-
+        new_router_path = os.path.join(self.router_directory, name_with_extension)
         try: 
             if os.path.exists(new_router_path):
                 raise FileExistsError(f"A router with the name {name} already exists.")
-            
-            for value in machineable_area:
-                if value <= 0 or value > ROUTER_MAX_DIMENSION:
-                    raise ValueError(f"Invalid value for machineable area.")
-            
-            for value in max_plate_size:
-                if value <= 0 or value > PLATE_MAX_DIMENSION:
-                    raise ValueError(f"Invalid value for maximum plate size.") 
-            
-            if min_safe_distance_from_edge > (min(max_plate_size[:2]) / 2) or min_safe_distance_from_edge < 0:
-                raise ValueError(f"Invalid value for maximum plate size.") 
-            
-            if drill_bit_diameter < 0 or drill_bit_diameter > DRILL_BIT_MAX_DIAMETER: 
-                raise ValueError(f"Invalid value for drill bit diameter.") 
-            
-            if mill_bit_diameter < 0 or mill_bit_diameter > MILL_BIT_MAX_DIAMETER:
-                raise ValueError(f"Invalid value for mill bit diameter.") 
-            
-        except(FileExistsError, ValueError) as e:
+
+        except FileExistsError as e:
             print(e)
-            return
-        
+
         else:
-
-            # creates new router, dumps to json
-
             new_router = {
-                "machineable_area": machineable_area,
-                "max_plate_size": max_plate_size,
-                "min_safe_distance_from_edge": min_safe_distance_from_edge,
-                "drill_bit_diameter": drill_bit_diameter,
-                "mill_bit_diameter": mill_bit_diameter
+                "machineable_area_(x-axis)": ROUTER_DEFAULT_DIMENSION, 
+                "machineable_area_(y-axis)": ROUTER_DEFAULT_DIMENSION, 
+                "machineable_area_(z-axis)": ROUTER_DEFAULT_DIMENSION, 
+                "max_plate_size_(x-axis)": PLATE_DEFAULT_DIMENSION,
+                "max_plate_size_(y-axis)": PLATE_DEFAULT_DIMENSION,
+                "max_plate_size_(z-axis)": PLATE_DEFAULT_DIMENSION,
+                "min_safe_distance_from_edge": DEFAULT_SAFE_DISTANCE,
+                "drill_bit_diameter": DRILL_BIT_DEFAULT_DIAMETER,
+                "mill_bit_diameter": MILL_BIT_DEFAULT_DIAMETER
             }
 
             with open(new_router_path, "w") as json_file:
-                json.dump(new_router, json_file, indent=4)
+                json.dump(new_router, json_file, indent=4) 
         
     def delete_router(self, name: str): # deletes router at indicated path
 
         name_with_extension = name+'.json'
-        router_path = os.path.join(ROUTERS_DIRECTORY, name_with_extension)
+        router_path = os.path.join(self.router_directory, name_with_extension)
 
         try:
             if os.path.exists(router_path):
@@ -73,7 +92,7 @@ class RouterManager:
         allowed_properties = ["machineable_area", "max_plate_size", "min_safe_distance_from_edge", "drill_bit_diameter", "mill_bit_diameter"]
 
         name_with_extension = name + '.json'
-        router_path = os.path.join(ROUTERS_DIRECTORY, name_with_extension)
+        router_path = os.path.join(self.router_directory, name_with_extension)
         
         try:
             if not os.path.exists(router_path):

@@ -1,93 +1,127 @@
 import sys
 import os
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget
+from functools import partial
+from collections import defaultdict
+from PyQt6.QtCore import Qt, pyqtSignal, QFile, QTextStream
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
 
-from preferences.pref_mgr import PreferenceManager
+MAX_RES = 4
 
-class MainWindow(QMainWindow):
+from filepaths import *
+
+from pref_mgr import PreferenceManager
+from router_mgr import RouterManager
+
+# todo: fix preference menu always showing default values on startup
+MIN_WIDTH, MIN_HEIGHT = 1600, 900
+
+def apply_stylesheet(widget: QWidget, stylesheet_file: str):
+
+    stylesheet_path = os.path.join(STYLESHEET_FOLDER_PATH, stylesheet_file)
+    if not os.path.exists(stylesheet_path):
+        raise FileNotFoundError(f"Stylesheet file {stylesheet_path} does not exist")
+    with open(stylesheet_path, 'r') as f:
+        stylesheet = f.read()
+        widget.setStyleSheet(stylesheet)
+
+def edit_key_name(str: str): # snake_case to Snake Case
+        words = str.split("_")
+        for i, word in enumerate(words):
+            words[i] = word.capitalize()
+        
+        return " ".join(words)
+
+class MainWindow(QMainWindow):  
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NEXACut Pro")
-        self.setMinimumSize(1600, 900)
+        self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
+        
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0) 
+        main_layout.setSpacing(0)
 
-        self.main_layout = QHBoxLayout()
-        self.main_layout.setContentsMargins(0, 0, 0, 0) # outside
-        self.main_layout.setSpacing(0)
+        self.left_menu = LeftMenu()
+        self.stacked_widget = StackedWidget()
 
-        self.init_left()
-        self.init_right()
+        main_layout.addWidget(self.left_menu, 20)
+        main_layout.addWidget(self.stacked_widget, 80)
 
         central_widget = QWidget()
-        central_widget.setLayout(self.main_layout)
+        central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
 
-    def init_left(self):
-        left_widget = QWidget()
+        # connects menu button clicks to window switching
+        self.left_menu.menu_button_clicked.connect(self.stacked_widget.switch_view)
 
-        left_layout = QVBoxLayout()
-        left_layout.setSpacing(0)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-
-        home_button = QPushButton('Home', left_widget)
-        home_button.clicked.connect(lambda: self.show_tab(0))
-
-        import_button = QPushButton('Import Part Files', left_widget)
-        import_button.clicked.connect(lambda: self.show_tab(1))
-
-        router_button = QPushButton('Configure CNC Router', left_widget)
-        router_button.clicked.connect(lambda: self.show_tab(2))
-
-        inventory_button = QPushButton('Manage Inventory', left_widget)
-        inventory_button.clicked.connect(lambda: self.show_tab(3))
-
-        placement_button = QPushButton('Generate Optimal Placement', left_widget)
-        placement_button.clicked.connect(lambda: self.show_tab(4))
-
-        preference_button = QPushButton('Configure Preferences', left_widget)
-        preference_button.clicked.connect(lambda: self.show_tab(5))
-
-        for button in (home_button, import_button, router_button, inventory_button, placement_button, preference_button):
-            button.setStyleSheet("""
-                QPushButton {
-                    background-color: #1E1E1E;
-                    color: #BFBFBF;
-                    font-family: "Helvetica Neue"; 
-                    font-size: 16px;
-                    border: 0px;
-                    border-radius: 0px;
-                    padding: 16px;
-                    text-align: left;
-                }
-                QPushButton:hover {
-                    background-color: #3C3C3C;
-                    border-color: #555555;
-                }
-            """)
         
-        left_layout.addWidget(home_button)
-        left_layout.addWidget(import_button)
-        left_layout.addWidget(router_button)
-        left_layout.addWidget(inventory_button)
-        left_layout.addWidget(placement_button)
-        left_layout.addWidget(preference_button)
-        left_layout.addStretch(1)
 
-        left_widget.setStyleSheet("background-color: rgb(30, 30, 30);") 
-        left_widget.setLayout(left_layout)
+class LeftMenu(QWidget):
 
-        self.main_layout.addWidget(left_widget, 20)
-    
-    def init_right(self):
-        self.right_stacked_widget = QStackedWidget()
+    menu_button_clicked = pyqtSignal(int)
 
-        self.views = []
+    def __init__(self):
+        super().__init__()
 
-        # Logo view
-        logo_view_widget = QWidget()
-        logo_view_layout = QVBoxLayout()
-        
+        layout = QVBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        buttons = [
+            "Home", 
+            "Import Part Files", 
+            "Configure CNC Router", 
+            "Manage Inventory", 
+            "Generate Optimal Placement", 
+            "Configure Preferences"]
+
+        for i, button_text in enumerate(buttons):
+            button = QPushButton(button_text)
+            apply_stylesheet(button, "menu-button.css")
+            button.clicked.connect(lambda _, index=i: self.menu_button_clicked.emit(index)) # button clicked boolean signal is ignored
+            layout.addWidget(button, 1)
+
+        bottom_widget = QWidget() # fixes random white bg
+        apply_stylesheet(bottom_widget, "left-menu.css")
+
+        layout.addWidget(bottom_widget, 10)
+        self.setLayout(layout)
+
+class StackedWidget(QStackedWidget):
+
+    def __init__(self):
+        super().__init__()
+        apply_stylesheet(self, "stacked-widget.css")
+        self.setCurrentIndex(0)
+        self.widgets = [
+            HomeViewWidget(), 
+            ImportViewWidget(),  
+            RouterViewWidget(), 
+            InventoryViewWidget(), 
+            PlacementViewWidget(), 
+            PreferenceViewWidget()]
+        for widget in self.widgets:
+            self.addWidget(widget)
+
+    def switch_view(self, index: int):
+        if 0 <= index < len(self.widgets):
+
+            old_widget = self.widgets[index]
+            self.removeWidget(old_widget)
+            old_widget.deleteLater()  
+
+            new_widget = type(old_widget)()
+
+            self.insertWidget(index, new_widget)
+            self.widgets[index] = new_widget
+            self.setCurrentIndex(index)
+
+class HomeViewWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout()
         logo_label = QLabel()
         script_path = os.path.dirname(__file__)
         logo_path = os.path.join(script_path, 'graphics', 'NEXACut Logo.png')
@@ -95,100 +129,303 @@ class MainWindow(QMainWindow):
         scaled_pixmap = pixmap.scaled(1000, 500)
         logo_label.setPixmap(scaled_pixmap)
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
         app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
-        app_description_label.setStyleSheet("""color: #BFBFBF; font-family: "Helvetica Neue"; font-size: 12px;""")
-        app_description_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        apply_stylesheet(app_description_label, "app-description-label.css")
+        layout.addStretch(1)
+        layout.addWidget(logo_label)
+        layout.addStretch(1)
+        layout.addWidget(app_description_label)
+        self.setLayout(layout)
+        print('home view initialized')
 
-        logo_view_layout.addStretch(1)
-        logo_view_layout.addWidget(logo_label)
-        logo_view_layout.addStretch(1)
-        logo_view_layout.addWidget(app_description_label)
-        logo_view_widget.setLayout(logo_view_layout)
+class EmptyTabWidget(QWidget):
+    def __init__(self, title_text: str, *widgets):
+        super().__init__()
+        layout = QVBoxLayout()
+        title = QLabel(title_text)
+        apply_stylesheet(title, "title.css")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+        for widget in widgets:
+            layout.addWidget(widget)
+        layout.addStretch(1)
+        self.setLayout(layout)
 
-        self.views.append(logo_view_widget)
+class ImportViewWidget(EmptyTabWidget):
+    def __init__(self):
+        additional_widgets = []
 
-        # Import View
-        import_view_widget = QWidget()
-        import_view_layout = QVBoxLayout()
+        main_widget = QWidget()
+        main_layout = QHBoxLayout()
 
-        import_title = QLabel("Import Part Files")
-        import_title.setStyleSheet("""color: #EFEFEF; font-family: "Helvetica Neue"; font-size: 40px;""")
-        import_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        left_widget = QWidget()
+        apply_stylesheet(left_widget, "left-menu.css")
+        left_layout = QVBoxLayout()
 
-        import_view_layout.addWidget(import_title)
-        import_view_layout.addStretch(1)
-        import_view_widget.setLayout(import_view_layout)
+        preview_title = QLabel("Preview")
+        preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        apply_stylesheet(preview_title, "text-widget.css")
 
-        self.views.append(import_view_widget)
+        self.image_view = QLabel("No File Selected")
+        apply_stylesheet(self.image_view, "app-description-label.css")
+        self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
 
-        # Router View
-        router_view_widget = QWidget()
-        router_view_layout = QVBoxLayout()
+        left_layout.addWidget(preview_title, 1)
+        left_layout.addWidget(self.image_view, 8)
+        left_layout.addStretch(1)
+        left_widget.setLayout(left_layout)
 
-        router_title = QLabel("Configure CNC Router")
-        router_title.setStyleSheet("""color: #EFEFEF; font-family: "Helvetica Neue"; font-size: 40px;""")
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+
+        import_button = QPushButton("Import Files")
+        apply_stylesheet(import_button, "router-button.css")
+        import_button.clicked.connect(self.import_stl_file)
+
+        self.button_ids = defaultdict(int) # maps button ids to filenames (text on button)
+
+        self.import_list_widget = QWidget()
+        self.import_list_button_group = QButtonGroup()
+        self.selected_button_id = None
+        self.max_button_id = 0
+        self.import_list_button_group.setExclusive(True) # only possible to check one button at a time
+        self.import_list_button_group.buttonClicked.connect(self.import_list_clicked_handler)
+        self.import_list_layout = QVBoxLayout()
+        self.import_list_widget.setLayout(self.import_list_layout)
+
+        right_layout.addWidget(import_button)
+        right_layout.addWidget(self.import_list_widget)
+        right_layout.addStretch(1)
+        right_widget.setLayout(right_layout)
+
+        main_layout.addStretch(1)
+        main_layout.addWidget(left_widget, 6)
+        main_layout.addWidget(right_widget, 2)
+        main_layout.addStretch(1)
+        main_widget.setLayout(main_layout)
+        additional_widgets.append(main_widget)
+
+        super().__init__("Import Part Files", *additional_widgets)
+        print('import view initialized')
+
+    def import_list_clicked_handler(self, button):
+        self.selected_button_id = self.import_list_button_group.id(button)
+
+    def update_file_preview(self):
+        if self.selected_button_id is None:
+            self.image_view.setText("No File Selected")
+        else:
+            pass
+
+    def import_stl_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "STL Files (*.stl)")
+        if file_path:
+            file_name = os.path.basename(file_path)
+            self.create_imported_stl_button(file_name)
+            self.button_ids[self.max_button_id] = file_path
+            self.max_button_id += 1
+
+    def create_imported_stl_button(self, text):
+        button = QPushButton(text)
+        button.setCheckable(True)
+        apply_stylesheet(button, "menu-button.css")
+        self.import_list_button_group.addButton(button, id=self.max_button_id)
+        self.import_list_layout.addWidget(button)
+
+    def delete_stl_file(self):
+        if self.selected_button_id is not None:
+            self.delete_imported_stl_button(self.selected_button_id)
+            self.button_ids.pop(self.selected_button_id)
+            self.selected_button_id = None
+
+    def delete_imported_stl_button(self, button_id):
+        button_to_remove = self.import_list_button_group.button(button_id)
+        if button_to_remove:
+            self.import_list_button_group.removeButton(button_to_remove)
+            button_to_remove.deleteLater()
+
+class RouterViewWidget(EmptyTabWidget):
+    def __init__(self):
+        additional_widgets = []
+        self.router_manager = RouterManager(ROUTER_DATA_FOLDER_PATH)
+
+        main_widget = QWidget()
+        main_layout = QHBoxLayout()
+
+        left_widget = QWidget()
+        left_layout = self.get_left_layout_new(self.router_manager.value_ranges)
+        print('left layout initialized')
+
+        left_widget.setLayout(left_layout)
+        apply_stylesheet(left_widget, "left-menu.css")
+
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+
+        router_list_combobox = QComboBox()
+        router_list_combobox.addItems(self.router_manager.routers)
+        if len(self.router_manager.routers) == 0:
+            router_list_combobox.addItem("None")
+        apply_stylesheet(router_list_combobox, "combo-box.css")
+        # router_list_combobox.currentIndexChanged.connect(self.select_router)
+
+        select_router_text = QLabel("Select Router: ")
+        apply_stylesheet(select_router_text, "text-widget.css")
+
+        right_layout.addWidget(select_router_text)
+        right_layout.addWidget(router_list_combobox)
+        right_layout.addStretch(1)
+        right_widget.setLayout(right_layout)
+
+        main_layout.addStretch(1)
+        main_layout.addWidget(left_widget, 6)
+        main_layout.addWidget(right_widget, 2)
+        main_layout.addStretch(1)
+        main_widget.setLayout(main_layout)
+
+        additional_widgets.append(main_widget)
+
+        super().__init__("Configure CNC Router", *additional_widgets)
+        print('router view initialized')
+
+    def get_left_layout_new(self, router_mgr_val_ranges: dict):
+        return self.get_left_layout(router_mgr_val_ranges)
+
+    def get_left_layout(self, router_mgr_val_ranges: dict, router_data: dict=None):
+
+        new_router = True if router_data is None else False
+
+        left_layout = QVBoxLayout()
+
+        router_title = QLabel("New Router")
         router_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        apply_stylesheet(router_title, "text-widget.css")
+
+        left_layout.addWidget(router_title)
+
+        for key in router_mgr_val_ranges:
+            value = router_mgr_val_ranges[key] # range for allowed values
+            router_option_widget = QWidget()
+            router_option_layout = QHBoxLayout()
+
+            key_widget = QLabel(f"{edit_key_name(key)}: ")
+            apply_stylesheet(key_widget, "text-widget.css")
+
+            value_input = QLineEdit()
+            apply_stylesheet(value_input, "line-input.css")
+            value_input.setPlaceholderText(f"{value[0]}-{value[1]} mm")
+
+            if not new_router:
+                value_input.setText(f"{router_data[key]} mm")
+
+            router_option_layout.addWidget(key_widget, 1)
+            router_option_layout.addStretch(1)
+            router_option_layout.addWidget(value_input)
+
+            router_option_widget.setLayout(router_option_layout)
+            left_layout.addWidget(router_option_widget)
+            
+        bottom_widget = QWidget()
+        bottom_layout = QHBoxLayout()
+
+        add_router_button = QPushButton("Save")
+        apply_stylesheet(add_router_button, "router-button.css")
+        # add_router_button.clicked.connect(self.add_router)
+        if not new_router:
+            delete_router_button = QPushButton("Delete")
+            apply_stylesheet(delete_router_button, "router-button.css")
+
+        bottom_layout.addStretch(1)
+        bottom_layout.addWidget(add_router_button, 1)
+        if not new_router:
+            bottom_layout.addWidget(delete_router_button, 1)
+        bottom_layout.addStretch(1)
+
+        bottom_widget.setLayout(bottom_layout)
+
+        left_layout.addWidget(bottom_widget)
+        left_layout.addStretch(1)
         
-        router_view_layout.addWidget(router_title)
-        router_view_layout.addStretch(1)
-        router_view_widget.setLayout(router_view_layout)
+        return left_layout
 
-        self.views.append(router_view_widget)
 
-        # Inventory View
-        inventory_view_widget = QWidget()
-        inventory_view_layout = QVBoxLayout()
+    def select_router(self):
+        pass
 
-        inventory_title = QLabel("Manage Inventory")
-        inventory_title.setStyleSheet("""color: #EFEFEF; font-family: "Helvetica Neue"; font-size: 40px;""")
-        inventory_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                
-        inventory_view_layout.addWidget(inventory_title)
-        inventory_view_layout.addStretch(1)
-        inventory_view_widget.setLayout(inventory_view_layout)
+    def add_router(self):
+        pass
 
-        self.views.append(inventory_view_widget)
+class InventoryViewWidget(EmptyTabWidget):
+    def __init__(self):
+        super().__init__("Manage Inventory")
+        print('inventory view initialized')
 
-        # Placement View
-        placement_view_widget = QWidget()
-        placement_view_layout = QVBoxLayout()
+class PlacementViewWidget(EmptyTabWidget):
+    def __init__(self):
+        super().__init__("Generate Optimal Placement")
+        print('placement view initialized')
 
-        placement_title = QLabel("Generate Optimal Placement")
-        placement_title.setStyleSheet("""color: #EFEFEF; font-family: "Helvetica Neue"; font-size: 40px;""")
-        placement_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+class PreferenceViewWidget(EmptyTabWidget):
+    def __init__(self):
+        additional_widgets = []
 
-        placement_view_layout.addWidget(placement_title)
-        placement_view_layout.addStretch(1)
-        placement_view_widget.setLayout(placement_view_layout)
+        main_widget = QWidget() # includes side margins
+        main_layout = QHBoxLayout()
 
-        self.views.append(placement_view_widget)
+        central_widget = QWidget()
+        central_layout = QVBoxLayout()
 
-        # Preference View
-        preference_view_widget = QWidget()
-        preference_view_layout = QVBoxLayout()
+        self.preference_manager = PreferenceManager(MAX_RES, ROUTER_DATA_FOLDER_PATH, STOCK_DATA_FOLDER_PATH, DEFAULT_PREFERENCE_FILE_PATH, USER_PREFERENCE_FILE_PATH)
+        for key in self.preference_manager.preference_data: # value broken for some reason
+            current_val = self.preference_manager.preference_data[key]
+            row_widget = QWidget()
+            row_layout = QHBoxLayout()
 
-        preference_title = QLabel("Configure Preferences")
-        preference_title.setStyleSheet("""color: #EFEFEF; font-family: "Helvetica Neue"; font-size: 40px;""")
-        preference_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            preference_value_label = QLabel(f"{edit_key_name(key)}: ")
+            apply_stylesheet(preference_value_label, "text-widget.css")
 
-        preference_view_layout.addWidget(preference_title)
-        preference_view_layout.addStretch(1)
-        preference_view_widget.setLayout(preference_view_layout)
+            combo_box = QComboBox() 
+            options = self.preference_manager.preference_options[key]
+            for current_val in options:
+                combo_box.addItem(str(current_val))
+            if len(options) == 0:
+                combo_box.addItem("None")
 
-        self.views.append(preference_view_widget)
+            initial_index = options.index(current_val) if current_val in options else 0
+            combo_box.setCurrentIndex(initial_index)
 
-        for view in self.views:
-            self.right_stacked_widget.addWidget(view)
+            combo_box.currentIndexChanged.connect(partial(self.selection_changed, key, combo_box))
+            apply_stylesheet(combo_box, "combo-box.css")
 
-        self.right_stacked_widget.setStyleSheet("background-color: rgb(45, 45, 45);") 
-        self.main_layout.addWidget(self.right_stacked_widget, 80)
+            row_layout.addWidget(preference_value_label, 1)
+            row_layout.addStretch(1)
+            row_layout.addWidget(combo_box, 1)
+            row_widget.setLayout(row_layout)
 
-    def show_tab(self, num: int):
-        self.right_stacked_widget.setCurrentIndex(num)
+            central_layout.addWidget(row_widget)
+
+        central_widget.setLayout(central_layout)
+        apply_stylesheet(central_widget, "left-menu.css")
+
+        main_layout.addStretch(2)
+        main_layout.addWidget(central_widget, 6)
+        main_layout.addStretch(2)
+        main_widget.setLayout(main_layout)
+
+        additional_widgets.append(main_widget)
+
+        super().__init__("Configure Preferences", *additional_widgets)
+        print('preference view initialized')
+    
+    def selection_changed(self, key: str, combo_box: QComboBox, index: int):
+        new_value = combo_box.itemText(index)
+        self.preference_manager.update_preference(key, new_value)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    print('app running')
     window = MainWindow()
     window.show()
+    print('window showing')
     sys.exit(app.exec())

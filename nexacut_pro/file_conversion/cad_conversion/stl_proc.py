@@ -4,7 +4,9 @@ import numpy as np
 from collections import defaultdict
 from stl import mesh
 
-from .constants import MIN_QUANTIZED_VALUE, MIN_VALUE_DECIMAL_DIGITS
+MIN_QUANTIZED_VALUE = .01
+MIN_VALUE_DECIMAL_DIGITS = 2
+SUPPORTED_PART_FORMATS = ['stl']
 
 def is_valid_stl(file_path):
     if not os.path.exists(file_path):
@@ -93,6 +95,7 @@ def get_outer_edges(stl_mesh, flat_axis: int = 2, tolerance: int = MIN_VALUE_DEC
             new_facet.append(round(new_point, tolerance))
         
         for i in range(3):
+            print(facet[i][0])
             point1 = tuple([round(facet[i][0], tolerance), round(facet[i][1], tolerance)])
             point2 = tuple([round(facet[(i+1)%3][0], tolerance), round(facet[(i+1)%3][1], tolerance)])
             new_edge = tuple(sorted([point1, point2])) # tuple of lists unhashable
