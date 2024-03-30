@@ -11,13 +11,17 @@ from PyQt6.QtGui import QPixmap
 
 from filepaths import *
 
-from pref_mgr import PreferenceManager
-from router_mgr import RouterManager
-from cad_conv_mgr import CADConversionManager
+from managers.pref_mgr import PreferenceManager
+from managers.router_mgr import RouterManager
+from managers.cad_conv_mgr import CADConversionManager
 
 MAX_RES = 4
 
 # todo: fix preference menu always showing default values on startup
+#       add ability to import multiple of the same file
+#       make router editing more clean, review functionality
+#       add inventory view
+
 MIN_WIDTH, MIN_HEIGHT = 1600, 900
 
 def apply_stylesheet(widget: QWidget, stylesheet_file: str):
@@ -306,18 +310,18 @@ class RouterViewWidget(EmptyTabWidget):
         right_widget = QWidget()
         right_layout = QVBoxLayout()
 
-        router_list_combobox = QComboBox()
-        router_list_combobox.addItems(self.router_manager.routers)
-        if len(self.router_manager.routers) == 0:
-            router_list_combobox.addItem("None")
-        apply_stylesheet(router_list_combobox, "combo-box.css")
-        # router_list_combobox.currentIndexChanged.connect(self.select_router)
+        self.router_list_combobox = QComboBox()
+        self.router_list_combobox.addItem("None")
+        for router_file in self.router_manager.routers:
+            self.router_list_combobox.addItem(router_file[:-5]) # removes .json ending            
+        apply_stylesheet(self.router_list_combobox, "combo-box.css")
+        self.router_list_combobox.currentIndexChanged.connect(lambda: self.select_router(self.router_list_combobox.currentText())) # calls with name arg
 
         select_router_text = QLabel("Select Router: ")
         apply_stylesheet(select_router_text, "text-widget.css")
 
         right_layout.addWidget(select_router_text)
-        right_layout.addWidget(router_list_combobox)
+        right_layout.addWidget(self.router_list_combobox)
         right_layout.addStretch(1)
         right_widget.setLayout(right_layout)
 
@@ -345,6 +349,8 @@ class RouterViewWidget(EmptyTabWidget):
         router_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         apply_stylesheet(router_title, "text-widget.css")
 
+        self.input_widgets = []
+
         left_layout.addWidget(router_title)
 
         for key in router_mgr_val_ranges:
@@ -356,6 +362,7 @@ class RouterViewWidget(EmptyTabWidget):
             apply_stylesheet(key_widget, "text-widget.css")
 
             value_input = QLineEdit()
+            self.input_widgets.append(value_input)
             apply_stylesheet(value_input, "line-input.css")
             value_input.setPlaceholderText(f"{value[0]}-{value[1]} mm")
 
@@ -374,7 +381,7 @@ class RouterViewWidget(EmptyTabWidget):
 
         add_router_button = QPushButton("Save")
         apply_stylesheet(add_router_button, "router-button.css")
-        # add_router_button.clicked.connect(self.add_router)
+        add_router_button.clicked.connect(self.add_router)
         if not new_router:
             delete_router_button = QPushButton("Delete")
             apply_stylesheet(delete_router_button, "router-button.css")
@@ -392,16 +399,110 @@ class RouterViewWidget(EmptyTabWidget):
         
         return left_layout
 
-
-    def select_router(self):
-        pass
+    def select_router(self, router_name: str):
+        if self.router_list_combobox.currentIndex == 0: # none selected
+            for i, _ in enumerate(self.input_widgets):
+                self.input_widgets[i].setText("banana") # fix this carp
+        else:
+            self.router_manager.select_router(router_name)
+            selected_router_values = self.router_manager.router_data.values()
+            for i, value in enumerate(selected_router_values):
+                self.input_widgets[i].setText(str(value))
 
     def add_router(self):
-        pass
+        try:
+            values = [int(self.input_widgets[i].text()) for i, _ in enumerate(self.input_widgets)]
+            limit_values = self.router_manager.value_ranges.values()
+            for i, lim_value in enumerate(limit_values):
+                min_value = lim_value[0]
+                max_value = lim_value[1]
+                if values[i] < min_value or values[i] > max_value:
+                    raise ValueError("Input value out of range")
+            self.router_manager.add_router('test', values)
+            self.router_list_combobox.addItem('test')
+            for widget in self.input_widgets:
+                widget.setText("")
+            self.router_manager.update_properties()
+
+        except Exception as e:
+            print(e)
 
 class InventoryViewWidget(EmptyTabWidget):
     def __init__(self):
-        super().__init__("Manage Inventory")
+        additional_widgets = []
+
+        main_widget = QWidget()
+        main_layout = QHBoxLayout()
+
+        left_widget = QWidget()  # view individual plates and previews
+        apply_stylesheet(left_widget, "left-menu.css")
+        left_layout = QVBoxLayout()
+
+        top_wrapper = QWidget()
+        top_wrapper_layout = QHBoxLayout()
+
+        preview_title = QLabel("Select Plate: ")
+        preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        apply_stylesheet(preview_title, "text-widget.css")
+
+        plate_select_combobox = QComboBox()
+        apply_stylesheet(plate_select_combobox, "combo-box.css")
+
+        top_wrapper_layout.addWidget(preview_title, 1)
+        top_wrapper_layout.addWidget(plate_select_combobox, 1)
+        top_wrapper_layout.addStretch(2)
+        top_wrapper.setLayout(top_wrapper_layout)
+
+        self.image_view = QLabel("No Plate Selected")
+        apply_stylesheet(self.image_view, "app-description-label.css")
+        self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
+
+        button_wrapper = QWidget()
+        button_wrapper_layout = QHBoxLayout()
+
+        add_new_button = QPushButton("Add New")
+        apply_stylesheet(add_new_button, "router-button.css")
+
+        delete_button = QPushButton("Delete Selected")
+        apply_stylesheet(delete_button, "router-button.css")
+
+        button_wrapper_layout.addStretch(1)
+        button_wrapper_layout.addWidget(add_new_button, 1)
+        button_wrapper_layout.addWidget(delete_button, 1)
+        button_wrapper_layout.addStretch(1)
+        button_wrapper.setLayout(button_wrapper_layout)
+
+        left_layout.addWidget(top_wrapper, 1)
+        left_layout.addWidget(self.image_view, 8)
+        left_layout.addWidget(button_wrapper, 1)
+        left_widget.setLayout(left_layout)
+
+        right_widget = QWidget()
+        right_layout = QVBoxLayout()
+
+        self.stock_list_combobox = QComboBox()
+        self.stock_list_combobox.addItem("None")      
+        apply_stylesheet(self.stock_list_combobox, "combo-box.css")
+        # self.stock_list_combobox.currentIndexChanged.connect(lambda: self.select_router(self.stock_list_combobox.currentText())) # calls with name arg
+
+        select_router_text = QLabel("Select Stock: ")
+        apply_stylesheet(select_router_text, "text-widget.css")
+
+        right_layout.addWidget(select_router_text)
+        right_layout.addWidget(self.stock_list_combobox)
+        right_layout.addStretch(1)
+        right_widget.setLayout(right_layout)
+
+        main_layout.addStretch(1)
+        main_layout.addWidget(left_widget, 6)
+        main_layout.addWidget(right_widget, 2)
+        main_layout.addStretch(1)
+        main_widget.setLayout(main_layout)
+
+        additional_widgets.append(main_widget)
+
+        super().__init__("Manage Inventory", *additional_widgets)
         print('inventory view initialized')
 
 class PlacementViewWidget(EmptyTabWidget):

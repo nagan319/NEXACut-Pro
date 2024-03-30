@@ -1,1 +1,0 @@
-STOCK_DIRECTORY = 'stock data'

@@ -2,10 +2,11 @@ import os
 import json
 import shutil
 
-from .constants import STOCK_DIRECTORY
-from .stock import Stock
-
 class StockManager:
+
+    def __init__(self, stock_data_folder: str):
+        self.stock_directory = stock_data_folder
+        self.update_properties()
 
     def new_stock(self, name: str): # adds new blank stock, saves as json
 
@@ -41,3 +42,16 @@ class StockManager:
         except(FileNotFoundError) as e:
             print(e)
             return
+        
+class Stock:
+    def __init__(self, json_path, folder_path):
+        self.json_path = json_path
+        self.folder_path = folder_path
+        self.stock = []
+    
+    def to_json(self):
+        return {
+            "json_path": self.json_path,
+            "folder_path": self.folder_path,
+            "stock": self.stock
+        }
