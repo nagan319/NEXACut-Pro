@@ -1,17 +1,21 @@
 import sys
 import os
+import atexit
+
 from functools import partial
 from collections import defaultdict
+
 from PyQt6.QtCore import Qt, pyqtSignal, QFile, QTextStream
 from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit
 from PyQt6.QtGui import QPixmap
-
-MAX_RES = 4
 
 from filepaths import *
 
 from pref_mgr import PreferenceManager
 from router_mgr import RouterManager
+from cad_conv_mgr import CADConversionManager
+
+MAX_RES = 4
 
 # todo: fix preference menu always showing default values on startup
 MIN_WIDTH, MIN_HEIGHT = 1600, 900
@@ -56,7 +60,12 @@ class MainWindow(QMainWindow):
         # connects menu button clicks to window switching
         self.left_menu.menu_button_clicked.connect(self.stacked_widget.switch_view)
 
-        
+        atexit.register(self.close_app)
+    
+    def close_app(self):
+        for filename in os.listdir(CAD_PREVIEW_DATA_PATH):
+            filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
+            os.remove(filepath)
 
 class LeftMenu(QWidget):
 
@@ -171,8 +180,21 @@ class ImportViewWidget(EmptyTabWidget):
         self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
 
+        delete_button_wrapper = QWidget()
+        delete_button_wrapper_layout = QHBoxLayout()
+
+        delete_button = QPushButton("Remove Selected File")
+        apply_stylesheet(delete_button, "router-button.css")
+        delete_button.clicked.connect(self.delete_stl_file)
+
+        delete_button_wrapper_layout.addStretch(1)
+        delete_button_wrapper_layout.addWidget(delete_button, 1)
+        delete_button_wrapper_layout.addStretch(1)
+        delete_button_wrapper.setLayout(delete_button_wrapper_layout)
+
         left_layout.addWidget(preview_title, 1)
         left_layout.addWidget(self.image_view, 8)
+        left_layout.addWidget(delete_button_wrapper, 1)
         left_layout.addStretch(1)
         left_widget.setLayout(left_layout)
 
@@ -188,7 +210,7 @@ class ImportViewWidget(EmptyTabWidget):
         self.import_list_widget = QWidget()
         self.import_list_button_group = QButtonGroup()
         self.selected_button_id = None
-        self.max_button_id = 0
+        self.new_button_id = 0
         self.import_list_button_group.setExclusive(True) # only possible to check one button at a time
         self.import_list_button_group.buttonClicked.connect(self.import_list_clicked_handler)
         self.import_list_layout = QVBoxLayout()
@@ -211,33 +233,54 @@ class ImportViewWidget(EmptyTabWidget):
 
     def import_list_clicked_handler(self, button):
         self.selected_button_id = self.import_list_button_group.id(button)
+        self.update_file_preview()
 
-    def update_file_preview(self):
+    def update_file_preview(self): 
         if self.selected_button_id is None:
             self.image_view.setText("No File Selected")
         else:
-            pass
+            image_name = self.button_ids[self.selected_button_id] + '.png'
+            image_path = os.path.join(CAD_PREVIEW_DATA_PATH, image_name)
+            pixmap = QPixmap(image_path)
+            self.image_view.setPixmap(pixmap)
 
     def import_stl_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "STL Files (*.stl)")
-        if file_path:
-            file_name = os.path.basename(file_path)
-            self.create_imported_stl_button(file_name)
-            self.button_ids[self.max_button_id] = file_path
-            self.max_button_id += 1
+        file_name = os.path.basename(file_path)[:-4] # no extension
 
-    def create_imported_stl_button(self, text):
-        button = QPushButton(text)
-        button.setCheckable(True)
-        apply_stylesheet(button, "menu-button.css")
-        self.import_list_button_group.addButton(button, id=self.max_button_id)
-        self.import_list_layout.addWidget(button)
+        for i in range(self.new_button_id):
+            if self.button_ids[i] == file_name:
+                return
+
+        if file_path:
+            button = QPushButton()
+            button.setCheckable(True)
+            apply_stylesheet(button, "dark-button.css") # button shows file import in progress
+
+            cad_converter = CADConversionManager(file_path, CAD_PREVIEW_DATA_PATH)
+            cad_converter.save_preview_image()
+
+            self.import_list_button_group.addButton(button, id=self.new_button_id)
+            self.import_list_layout.addWidget(button)
+            button.setText(file_name)
+            apply_stylesheet(button, "menu-button.css")
+
+            self.button_ids[self.new_button_id] = file_name
+            self.new_button_id += 1
 
     def delete_stl_file(self):
         if self.selected_button_id is not None:
+            self.delete_preview_file(self.button_ids[self.selected_button_id])
             self.delete_imported_stl_button(self.selected_button_id)
             self.button_ids.pop(self.selected_button_id)
             self.selected_button_id = None
+            self.update_file_preview()
+
+    def delete_preview_file(self, name: str):
+            filename = name+'.png'
+            file_path = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
     def delete_imported_stl_button(self, button_id):
         button_to_remove = self.import_list_button_group.button(button_id)
