@@ -1,6 +1,6 @@
 # NEXACut Pro: A standalone application for automating and optimizing the CAM process on 3-axis CNC routers
 
-![Logo](graphics/NEXACut Logo.png)
+![logo](https://github.com/nagan319/NEXACut-Pro/assets/147287567/e3962669-4dee-49f1-879c-7f65fb409fa7)
 
 ## Outline:
 

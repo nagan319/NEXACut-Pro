@@ -230,19 +230,17 @@ class ImportViewWidget(EmptyTabWidget):
         apply_stylesheet(self.import_button, "router-button.css")
         self.import_button.clicked.connect(self.import_stl_file)
 
-        self.button_ids = defaultdict(int) # maps button ids to filenames (text on button)
-        self.import_amts = defaultdict(int) # maps same button id to amount of times to import file
-
-        self.import_amts_group = defaultdict(int)
-        self.widget_wrappers = defaultdict(int)
+        self.id_to_filename = defaultdict(int) # maps button ids to filenames (text on button)
+        self.id_to_amount = defaultdict(int) # amount of each file
+        self.id_to_widgets = defaultdict(int) # tuple containing wrapper widget, scrollbox, and button
 
         self.import_list_widget = QWidget()
         self.import_list_button_group = QButtonGroup()
         self.selected_button_id = None
-        self.new_button_id = 0
+        self.new_id = 0
 
         self.import_list_button_group.setExclusive(True) # only possible to check one button at a time
-        self.import_list_button_group.buttonClicked.connect(self.import_list_clicked_handler)
+        self.import_list_button_group.buttonClicked.connect(self.selection_changed_handler)
         self.import_list_layout = QVBoxLayout()
         self.import_list_widget.setLayout(self.import_list_layout)
 
@@ -266,7 +264,9 @@ class ImportViewWidget(EmptyTabWidget):
         super().__init__("Import Part Files", *additional_widgets)
         print('import view initialized')
 
-    def import_list_clicked_handler(self, button):
+    # file selection
+
+    def selection_changed_handler(self, button):
         self.selected_button_id = self.import_list_button_group.id(button)
         self.update_file_preview()
 
@@ -274,22 +274,24 @@ class ImportViewWidget(EmptyTabWidget):
         if self.selected_button_id is None:
             self.image_view.setText("No File Selected")
         else:
-            image_name = self.button_ids[self.selected_button_id] + '.png'
+            image_name = self.id_to_filename[self.selected_button_id] + '.png'
             image_path = os.path.join(CAD_PREVIEW_DATA_PATH, image_name)
             pixmap = QPixmap(image_path)
             self.image_view.setPixmap(pixmap)
 
+    # adding new file
+
     # all imported files to use mm
     def import_stl_file(self):
 
-        if len(self.widget_wrappers) >= self.MAX_IMPORT_FILES: # arbitrary dict, all 3 work
+        if len(self.id_to_widgets) >= self.MAX_IMPORT_FILES: 
             return
 
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "STL Files (*.stl)")
         file_name = os.path.basename(file_path)[:-4] # no extension
 
-        for i in range(self.new_button_id): # prevents import of existing files
-            if self.button_ids[i] == file_name:
+        for i in range(self.new_id): # prevents import of existing files
+            if self.id_to_filename[i] == file_name:
                 return
 
         if file_path:
@@ -305,6 +307,8 @@ class ImportViewWidget(EmptyTabWidget):
                 amt_input = QLineEdit()
                 apply_stylesheet(amt_input, "amt-line-edit.css")
                 amt_input.setPlaceholderText(f"1-{self.MAX_AMT_EACH_FILE}")
+                current_id = self.new_id
+                # amt_input.textEdited.connect()
                 amt_input.setText("1")
 
                 cad_converter = CADConversionManager(file_path, CAD_PREVIEW_DATA_PATH, PART_IMPORT_DATA_PATH)
@@ -319,9 +323,8 @@ class ImportViewWidget(EmptyTabWidget):
                 cad_converter.save_as_svg()
 
                 # dict-like structures containing button and input widgets, wrappers
-                self.import_list_button_group.addButton(button, id=self.new_button_id)
-                self.import_amts_group[self.new_button_id] = amt_input
-                self.widget_wrappers[self.new_button_id] = button_wrapper
+                self.import_list_button_group.addButton(button, id=self.new_id)
+                self.id_to_widgets[self.new_id] = (button_wrapper, button, amt_input)
 
                 button_wrapper_layout.addWidget(button, 3)
                 button_wrapper_layout.addWidget(amt_input, 1)
@@ -329,24 +332,21 @@ class ImportViewWidget(EmptyTabWidget):
 
                 self.import_list_layout.addWidget(button_wrapper)
 
-                self.import_amts[self.new_button_id] = 1
-                self.button_ids[self.new_button_id] = file_name
+                self.id_to_amount[self.new_id] = 1
+                self.id_to_filename[self.new_id] = file_name
 
-                if len(self.widget_wrappers) >= self.MAX_IMPORT_FILES: # arbitrary dict, all 3 work
-                    self.import_button.setText("Limit Reached")
-
-                self.new_button_id += 1
+                self.new_id += 1
             
             except Exception as e: # includes invalid stl etc.
                 print(e)
 
+    # file deletion
+
     def delete_stl_file(self):
         if self.selected_button_id is not None:
-            self.delete_preview_file(self.button_ids[self.selected_button_id])
+            self.delete_preview_file(self.id_to_filename[self.selected_button_id])
             self.delete_imported_stl_button(self.selected_button_id)
             self.update_file_preview()
-            if len(self.widget_wrappers) < self.MAX_IMPORT_FILES: 
-                self.import_button.setText("Import Files")
 
     def delete_preview_file(self, name: str): # removes file from data/cad_preview/data
             filename = name+'.png'
@@ -355,25 +355,29 @@ class ImportViewWidget(EmptyTabWidget):
                 os.remove(file_path)
 
     def delete_imported_stl_button(self, button_id): # deletes button widget, pops from dict, unselects
-        button_to_remove = self.import_list_button_group.button(button_id)
-        widget_to_remove = self.import_amts_group[button_id]
-        wrapper_to_remove = self.widget_wrappers[button_id]
+        wrapper_to_remove, button_to_remove, combobox_to_remove = self.id_to_widgets[button_id]
 
-        if button_to_remove and widget_to_remove and wrapper_to_remove:
+        if button_to_remove:
 
             self.import_list_button_group.removeButton(button_to_remove)
-            self.import_amts_group.pop(self.selected_button_id) 
-            self.widget_wrappers.pop(self.selected_button_id)
+
+            self.id_to_widgets.pop(button_id)
+            self.id_to_filename.pop(self.selected_button_id)
+            self.id_to_amount.pop(button_id)
 
             button_to_remove.deleteLater()
-            widget_to_remove.deleteLater()
+            combobox_to_remove.deleteLater()
             wrapper_to_remove.deleteLater()
 
-            self.button_ids.pop(self.selected_button_id)
             self.selected_button_id = None
 
+    # saving imports
+
     def save_imports(self):
-        pass
+        filenames = list(self.id_to_filename.values())
+        amounts = list(self.id_to_amount.values())
+        for i, _ in enumerate(filenames):
+            print(f"{filenames[i]}: {amounts[i]}")
     
 class RouterViewWidget(EmptyTabWidget):
     def __init__(self):
