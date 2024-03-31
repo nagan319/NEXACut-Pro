@@ -37,7 +37,7 @@ Intuitive digitization of CNC stock allows for easily viewing available plates w
 ## Optimization Algorithm
 ![optimization algorithm](https://github.com/nagan319/NEXACut-Pro/assets/147287567/3e4c8641-22fb-4da7-b1b6-73e4e0635df2)
 
-The optimization algorithm utilizes the concept of the no-fit polygon (NFPs). Essentially, an NFP is the union of the area created by a polygon (A) and all possible positions of a polygon (B) around it. Random placements consisting of parts placed on possible NFP locations of existing plates in order of decreasing size are fed through a genetic algorithm, which filters out better placements based on the amount of wasted material and returns the heuristic ideal.
+The optimization algorithm utilizes the concept of the no-fit polygon (NFP). Essentially, an NFP is the union of the area created by a polygon (A) and all possible positions of a polygon (B) around it. Random placements consisting of parts placed on possible NFP locations of existing plates in order of decreasing size are fed through a genetic algorithm, which filters out better placements based on the amount of wasted material and returns the heuristic ideal.
 
 ## In-App Screenshots
 ![home screen](https://github.com/nagan319/NEXACut-Pro/assets/147287567/0baff21f-711f-4207-a7ae-c543458f7cdd)
