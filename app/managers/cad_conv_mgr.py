@@ -10,11 +10,13 @@ MIN_VALUE_DECIMAL_DIGITS = 2
 class CADConversionManager:
     SUPPORTED_PART_FORMATS = ['stl']
 
-    def __init__(self, stl_filepath: str, cad_preview_data_folder: str, bg_color: str='#1e1e1e', text_color: str='#efefef', plot_color: str='#cc0000'):
+    def __init__(self, stl_filepath: str, cad_preview_data_folder: str, part_import_data_folder: str, bg_color: str='#1e1e1e', text_color: str='#efefef', plot_color: str='#cc0000'):
 
         self.stl_filepath = stl_filepath
         self.png_name = os.path.basename(stl_filepath)[:-4] + ".png" 
         self.preview_path = os.path.join(cad_preview_data_folder, self.png_name)
+        self.svg_name = os.path.basename(stl_filepath)[:-4] + ".svg" 
+        self.svg_path = os.path.join(part_import_data_folder, self.svg_name)
 
         self.bg_color = bg_color
         self.text_color = text_color
@@ -34,6 +36,7 @@ class CADConversionManager:
         
         self.flat_axis = self.determine_axis_to_flatten()
         self.flattened_mesh = self.flatten_stl()
+        self.outer_edges = self.get_outer_edges(self.flat_axis)
 
     def is_valid_stl(self, file_path) -> bool:
         try: 
@@ -86,15 +89,18 @@ class CADConversionManager:
         outer_edges = [edge for edge, count in edge_counts.items() if count == 1] # all outer edges only appear in one facet
         return outer_edges
 
-    def save_preview_image(self):
+    def save_preview_image(self, scale_factor: float = 1): # scalefactor necessary for metric/imperial mode display
 
         if os.path.exists(self.preview_path): # no need to waste time
             return
 
         plt.figure()
 
-        for edge in self.get_outer_edges():
+        for edge in self.outer_edges:
             x_values, y_values = zip(*edge)
+            if scale_factor != 1:
+                x_values = tuple([x * scale_factor for x in x_values])
+                y_values = tuple([y * scale_factor for y in y_values])
             plt.plot(x_values, y_values, color=self.plot_color)
 
         plt.grid(True)
@@ -110,3 +116,14 @@ class CADConversionManager:
         plt.gca().spines['right'].set_color(self.text_color)
 
         plt.savefig(self.preview_path, bbox_inches='tight', facecolor='#1E1E1E') # image bg color (around graph)
+
+    def save_as_svg(self):
+        with open(self.svg_path, 'w') as f:
+            f.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
+            f.write('<svg xmlns="http://www.w3.org/2000/svg" version="1.1">\n')
+            for line in self.outer_edges:
+                x1, y1 = line[0]
+                x2, y2 = line[1]
+                svg_line = f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="black" stroke-width="2"/>\n'
+                f.write(svg_line)
+            f.write('</svg>\n')

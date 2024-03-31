@@ -1,0 +1,9 @@
+QLineEdit {
+    font-family: 'Helvetica Neue';
+    background-color: #1E1E1E;
+    color: #BFBFBF; 
+    font-size: 16px; 
+    border: 0px;
+    border-radius: 0px; 
+    padding: 16px;
+}

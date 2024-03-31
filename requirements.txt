@@ -1,4 +1,0 @@
-numpy
-matplotlib
-cv2
-pyqt6

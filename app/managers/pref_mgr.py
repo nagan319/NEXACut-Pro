@@ -22,7 +22,7 @@ class PreferenceManager:
     def _load_preference_options(self):
         return {
             "units": ('Metric', 'Imperial'),
-            "image_resolution": list(range(1, self.max_img_res + 1)),
+            "image_resolution": list(str(i) for i in range(1, self.max_img_res + 1)),
             "stock": self._load_folder_contents(self.router_data_path),
             "router": self._load_folder_contents(self.stock_data_path)
         }

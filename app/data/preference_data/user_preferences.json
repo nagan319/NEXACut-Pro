@@ -1,6 +1,6 @@
 {
-    "units": "Metric",
-    "image_resolution": "2",
+    "units": "Imperial",
+    "image_resolution": "3",
     "stock": "",
-    "router": ""
+    "router": "None"
 }

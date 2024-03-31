@@ -1,12 +1,13 @@
 import sys
 import os
+import json
 import atexit
 
 from functools import partial
 from collections import defaultdict
 
 from PyQt6.QtCore import Qt, pyqtSignal, QFile, QTextStream
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit, QMessageBox
 from PyQt6.QtGui import QPixmap
 
 from filepaths import *
@@ -18,7 +19,7 @@ from managers.cad_conv_mgr import CADConversionManager
 MAX_RES = 4
 
 # todo: fix preference menu always showing default values on startup
-#       add ability to import multiple of the same file
+#       fix button spacing in stl import view
 #       make router editing more clean, review functionality
 #       add inventory view
 
@@ -39,6 +40,20 @@ def edit_key_name(str: str): # snake_case to Snake Case
             words[i] = word.capitalize()
         
         return " ".join(words)
+
+def get_user_settings():
+    if os.path.exists(USER_PREFERENCE_FILE_PATH):
+        with open(USER_PREFERENCE_FILE_PATH) as f:
+            data = json.load(f)
+            return data
+        
+def clear_temporary_data():
+    for filename in os.listdir(CAD_PREVIEW_DATA_PATH):
+        filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
+        os.remove(filepath)
+    for filename in os.listdir(PART_IMPORT_DATA_PATH):
+        filepath = os.path.join(PART_IMPORT_DATA_PATH, filename)
+        os.remove(filepath)
 
 class MainWindow(QMainWindow):  
 
@@ -67,9 +82,7 @@ class MainWindow(QMainWindow):
         atexit.register(self.close_app)
     
     def close_app(self):
-        for filename in os.listdir(CAD_PREVIEW_DATA_PATH):
-            filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
-            os.remove(filepath)
+        clear_temporary_data()
 
 class LeftMenu(QWidget):
 
@@ -127,6 +140,9 @@ class StackedWidget(QStackedWidget):
 
             new_widget = type(old_widget)()
 
+            if type(new_widget) != ImportViewWidget: # clears import preview images in case settings are changed etc.
+                clear_temporary_data()
+
             self.insertWidget(index, new_widget)
             self.widgets[index] = new_widget
             self.setCurrentIndex(index)
@@ -165,13 +181,17 @@ class EmptyTabWidget(QWidget):
         self.setLayout(layout)
 
 class ImportViewWidget(EmptyTabWidget):
+
+    MAX_IMPORT_FILES = 8
+    MAX_AMT_EACH_FILE = 9
+
     def __init__(self):
-        additional_widgets = []
+        additional_widgets = [] # passed into super init
 
         main_widget = QWidget()
         main_layout = QHBoxLayout()
 
-        left_widget = QWidget()
+        left_widget = QWidget() # file import wrapper widget
         apply_stylesheet(left_widget, "left-menu.css")
         left_layout = QVBoxLayout()
 
@@ -179,7 +199,7 @@ class ImportViewWidget(EmptyTabWidget):
         preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         apply_stylesheet(preview_title, "text-widget.css")
 
-        self.image_view = QLabel("No File Selected")
+        self.image_view = QLabel("No File Selected") # displays matplotlib png from data/cad_preview_data
         apply_stylesheet(self.image_view, "app-description-label.css")
         self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
@@ -204,24 +224,35 @@ class ImportViewWidget(EmptyTabWidget):
 
         right_widget = QWidget()
         right_layout = QVBoxLayout()
+        right_layout.setSpacing(2)
 
-        import_button = QPushButton("Import Files")
-        apply_stylesheet(import_button, "router-button.css")
-        import_button.clicked.connect(self.import_stl_file)
+        self.import_button = QPushButton("Import Files")
+        apply_stylesheet(self.import_button, "router-button.css")
+        self.import_button.clicked.connect(self.import_stl_file)
 
         self.button_ids = defaultdict(int) # maps button ids to filenames (text on button)
+        self.import_amts = defaultdict(int) # maps same button id to amount of times to import file
+
+        self.import_amts_group = defaultdict(int)
+        self.widget_wrappers = defaultdict(int)
 
         self.import_list_widget = QWidget()
         self.import_list_button_group = QButtonGroup()
         self.selected_button_id = None
         self.new_button_id = 0
+
         self.import_list_button_group.setExclusive(True) # only possible to check one button at a time
         self.import_list_button_group.buttonClicked.connect(self.import_list_clicked_handler)
         self.import_list_layout = QVBoxLayout()
         self.import_list_widget.setLayout(self.import_list_layout)
 
-        right_layout.addWidget(import_button)
+        save_button = QPushButton("Save")
+        apply_stylesheet(save_button, "router-button.css")
+        save_button.clicked.connect(self.save_imports)
+
+        right_layout.addWidget(self.import_button)
         right_layout.addWidget(self.import_list_widget)
+        right_layout.addWidget(save_button)
         right_layout.addStretch(1)
         right_widget.setLayout(right_layout)
 
@@ -239,7 +270,7 @@ class ImportViewWidget(EmptyTabWidget):
         self.selected_button_id = self.import_list_button_group.id(button)
         self.update_file_preview()
 
-    def update_file_preview(self): 
+    def update_file_preview(self): # selects file to display in preview widget
         if self.selected_button_id is None:
             self.image_view.setText("No File Selected")
         else:
@@ -248,50 +279,102 @@ class ImportViewWidget(EmptyTabWidget):
             pixmap = QPixmap(image_path)
             self.image_view.setPixmap(pixmap)
 
+    # all imported files to use mm
     def import_stl_file(self):
+
+        if len(self.widget_wrappers) >= self.MAX_IMPORT_FILES: # arbitrary dict, all 3 work
+            return
+
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "STL Files (*.stl)")
         file_name = os.path.basename(file_path)[:-4] # no extension
 
-        for i in range(self.new_button_id):
+        for i in range(self.new_button_id): # prevents import of existing files
             if self.button_ids[i] == file_name:
                 return
 
         if file_path:
-            button = QPushButton()
-            button.setCheckable(True)
-            apply_stylesheet(button, "dark-button.css") # button shows file import in progress
+            try:
+                button_wrapper = QWidget()
+                button_wrapper_layout = QHBoxLayout()
 
-            cad_converter = CADConversionManager(file_path, CAD_PREVIEW_DATA_PATH)
-            cad_converter.save_preview_image()
+                button = QPushButton()
+                button.setCheckable(True)
+                button.setText(file_name)
+                apply_stylesheet(button, "menu-button.css")
 
-            self.import_list_button_group.addButton(button, id=self.new_button_id)
-            self.import_list_layout.addWidget(button)
-            button.setText(file_name)
-            apply_stylesheet(button, "menu-button.css")
+                amt_input = QLineEdit()
+                apply_stylesheet(amt_input, "amt-line-edit.css")
+                amt_input.setPlaceholderText(f"1-{self.MAX_AMT_EACH_FILE}")
+                amt_input.setText("1")
 
-            self.button_ids[self.new_button_id] = file_name
-            self.new_button_id += 1
+                cad_converter = CADConversionManager(file_path, CAD_PREVIEW_DATA_PATH, PART_IMPORT_DATA_PATH)
+                user_units = get_user_settings()['units']
+
+                inches_in_mm = 0.0393701
+
+                if user_units == 'Imperial':
+                    cad_converter.save_preview_image(inches_in_mm)
+                else:
+                    cad_converter.save_preview_image() # no scaling necessary
+                cad_converter.save_as_svg()
+
+                # dict-like structures containing button and input widgets, wrappers
+                self.import_list_button_group.addButton(button, id=self.new_button_id)
+                self.import_amts_group[self.new_button_id] = amt_input
+                self.widget_wrappers[self.new_button_id] = button_wrapper
+
+                button_wrapper_layout.addWidget(button, 3)
+                button_wrapper_layout.addWidget(amt_input, 1)
+                button_wrapper.setLayout(button_wrapper_layout)
+
+                self.import_list_layout.addWidget(button_wrapper)
+
+                self.import_amts[self.new_button_id] = 1
+                self.button_ids[self.new_button_id] = file_name
+
+                if len(self.widget_wrappers) >= self.MAX_IMPORT_FILES: # arbitrary dict, all 3 work
+                    self.import_button.setText("Limit Reached")
+
+                self.new_button_id += 1
+            
+            except Exception as e: # includes invalid stl etc.
+                print(e)
 
     def delete_stl_file(self):
         if self.selected_button_id is not None:
             self.delete_preview_file(self.button_ids[self.selected_button_id])
             self.delete_imported_stl_button(self.selected_button_id)
-            self.button_ids.pop(self.selected_button_id)
-            self.selected_button_id = None
             self.update_file_preview()
+            if len(self.widget_wrappers) < self.MAX_IMPORT_FILES: 
+                self.import_button.setText("Import Files")
 
-    def delete_preview_file(self, name: str):
+    def delete_preview_file(self, name: str): # removes file from data/cad_preview/data
             filename = name+'.png'
             file_path = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-    def delete_imported_stl_button(self, button_id):
+    def delete_imported_stl_button(self, button_id): # deletes button widget, pops from dict, unselects
         button_to_remove = self.import_list_button_group.button(button_id)
-        if button_to_remove:
-            self.import_list_button_group.removeButton(button_to_remove)
-            button_to_remove.deleteLater()
+        widget_to_remove = self.import_amts_group[button_id]
+        wrapper_to_remove = self.widget_wrappers[button_id]
 
+        if button_to_remove and widget_to_remove and wrapper_to_remove:
+
+            self.import_list_button_group.removeButton(button_to_remove)
+            self.import_amts_group.pop(self.selected_button_id) 
+            self.widget_wrappers.pop(self.selected_button_id)
+
+            button_to_remove.deleteLater()
+            widget_to_remove.deleteLater()
+            wrapper_to_remove.deleteLater()
+
+            self.button_ids.pop(self.selected_button_id)
+            self.selected_button_id = None
+
+    def save_imports(self):
+        pass
+    
 class RouterViewWidget(EmptyTabWidget):
     def __init__(self):
         additional_widgets = []
@@ -521,25 +604,26 @@ class PreferenceViewWidget(EmptyTabWidget):
         central_layout = QVBoxLayout()
 
         self.preference_manager = PreferenceManager(MAX_RES, ROUTER_DATA_FOLDER_PATH, STOCK_DATA_FOLDER_PATH, DEFAULT_PREFERENCE_FILE_PATH, USER_PREFERENCE_FILE_PATH)
-        for key in self.preference_manager.preference_data: # value broken for some reason
-            current_val = self.preference_manager.preference_data[key]
+
+        for current_key in self.preference_manager.preference_data: 
+            current_val = self.preference_manager.preference_data[current_key]
             row_widget = QWidget()
             row_layout = QHBoxLayout()
 
-            preference_value_label = QLabel(f"{edit_key_name(key)}: ")
+            preference_value_label = QLabel(f"{edit_key_name(current_key)}: ")
             apply_stylesheet(preference_value_label, "text-widget.css")
 
             combo_box = QComboBox() 
-            options = self.preference_manager.preference_options[key]
+            options = self.preference_manager.preference_options[current_key] # all possible values for key
             for current_val in options:
                 combo_box.addItem(str(current_val))
             if len(options) == 0:
                 combo_box.addItem("None")
 
-            initial_index = options.index(current_val) if current_val in options else 0
-            combo_box.setCurrentIndex(initial_index)
+            if current_val in options:
+                combo_box.setCurrentText(current_val)
 
-            combo_box.currentIndexChanged.connect(partial(self.selection_changed, key, combo_box))
+            combo_box.currentIndexChanged.connect(partial(self.selection_changed, current_key, combo_box))
             apply_stylesheet(combo_box, "combo-box.css")
 
             row_layout.addWidget(preference_value_label, 1)
