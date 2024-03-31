@@ -5,11 +5,11 @@
 ## Outline:
 
 - Standalone cross-platform application
-- CNC stock stored in SVG format
-- Use of OpenCV allows for easy addition of already used stock
-- Files for new parts converted from STL to SVG format
-- Part placement is optimized by a genetic nesting algorithm
-- Integration with Fusion 360 API for full automation
+- CNC stock is stored in SVG format, ensuring compatibility and easy integration
+- Use of OpenCV facilitates the addition of previously used stock materials, streamlining workflow efficiency
+- New part files are seamlessly converted from STL to SVG format
+- Part placement optimization is achieved through a genetic nesting algorithm, minimizing wasted material and maximizing production efficiency.
+- Integration with the Fusion 360 API enables full automation of CNC workflows
 
 ## Why SVG?
 
@@ -18,12 +18,27 @@ SVG is the format of choice for performing optimization calculations since it is
 ## CAD to SVG
 ![cad conversion](https://github.com/nagan319/NEXACut-Pro/assets/147287567/2986d8b4-7201-49c4-ae9f-c8305ca8250e)
 
-The conversion process for CAD files is relatively straightforward. It receives an STL file, which consists of a list of facets with their respective points, identifies the axis along which there are the fewest unique coordinates (as a prerequesite, CAD files must be 'flat' pieces situated parallel a coordinate axis), 'flattens' the file by filtering out facets with all points on the target plane, and filters outside edges. All outside edges, by definition, only belong to one facet and as such can be easily filtered. 
+The conversion process for CAD files follows a straightforward approach. Initially, it receives an STL file consisting of a list of facets with their respective points. The process identifies the axis with the fewest unique coordinates, assuming the CAD files are flat and parallel to a coordinate axis. It then 'flattens' the file by filtering out facets lying directly on the target plane, discarding unnecessary geometric data. Outside edges are then filtered out based on the fact that they, by definition, only belong to one facet.
 
 ## Image to SVG
 ![plate_conversion](https://github.com/nagan319/NEXACut-Pro/assets/147287567/01402912-f3c6-4d32-857d-f4a2ca78a3b4)
 
-The conversion process for image files consists of four stages and makes use of the OpenCV library for Python. First, the raw image file is resized to a certain resolution and converted to binary using thresholding. After additional filtering, it is passed into a feature detection algorithm which detects outlines and corners in the image. I tried using the CV library's default corner detection method but found that it was not ideal for the situation and instead wrote a method that uses dot products to determine the change in angle between two points. After corners are found, the image is 'flattened' and can be converted to SVG.
+The image conversion process consists of four key stages, achieved via the OpenCV image processing library in Python. Initially, the raw image undergoes resizing and binary conversion via thresholding. Then, additional filtering is applied to reduce noise and refine the binary representation. 
 
+Next, a feature detection algorithm is used to determine the key features of the image, including corners and edges. Although I attempted using OpenCV's default corner detection method, it proved cumbersome for the task, leading to a custom method leveraging dot product computations to evaluate changes in angles between points.
+
+Once features are detected, the image is 'flattened' and resized to appropriate dimensions. This image is then converted to SVG and can be used in the optimization algorithm.
+
+## Built-in System for Organizing Digitized CNC Stock
+![stock](https://github.com/nagan319/NEXACut-Pro/assets/147287567/560f59bf-28ef-4eee-938b-70b62dcd01e8)
+
+Intuitive digitization of CNC stock reduces the need for 
+
+## In-App Screenshots
+![home screen](https://github.com/nagan319/NEXACut-Pro/assets/147287567/0baff21f-711f-4207-a7ae-c543458f7cdd)
+![part import](https://github.com/nagan319/NEXACut-Pro/assets/147287567/a12b3348-5d89-4fec-85fc-f865ae9c6a3a)
 ![router configuration](https://github.com/nagan319/NEXACut-Pro/assets/147287567/00fa6c2e-f65b-4b30-8763-2655c05b06e1)
+![inventory management](https://github.com/nagan319/NEXACut-Pro/assets/147287567/3587b292-817e-4bd8-b274-bf74fa8fd690)
+
+
 
