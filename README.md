@@ -16,7 +16,7 @@
 SVG is the format of choice for performing optimization calculations since it is universally supported, is relatively straightforward to convert both CAD and image files into, and is highly compatible with the NFP algorithm (see 'Optimization Algorithm').
 
 ## CAD to SVG
-![part import](https://github.com/nagan319/NEXACut-Pro/assets/147287567/e0e13fff-369a-4dd7-a7b2-21f58d3ee016)
+![cad conversion](https://github.com/nagan319/NEXACut-Pro/assets/147287567/2986d8b4-7201-49c4-ae9f-c8305ca8250e)
 
 The conversion process for CAD files is relatively straightforward. It receives an STL file, which consists of a list of facets with their respective points, identifies the axis along which there are the fewest unique coordinates (as a prerequesite, CAD files must be 'flat' pieces situated parallel a coordinate axis), 'flattens' the file by filtering out facets with all points on the target plane, and filters outside edges. All outside edges, by definition, only belong to one facet and as such can be easily filtered. 
 
