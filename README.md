@@ -34,9 +34,9 @@ Once features are detected, the image is 'flattened' and resized to appropriate 
 
 Intuitive digitization of CNC stock allows for easily viewing available plates without wasting valuable production time. Each plate file within the stock is characterized by its material type and dimensions along with an optional SVG file. Stock files consist of a list of plates and are used during optimization calculations.
 
-## The Optimization Algorithm
+## Optimization Algorithm
 
-
+![optimization algorithm](https://github.com/nagan319/NEXACut-Pro/assets/147287567/3e4c8641-22fb-4da7-b1b6-73e4e0635df2)
 
 ## In-App Screenshots
 ![home screen](https://github.com/nagan319/NEXACut-Pro/assets/147287567/0baff21f-711f-4207-a7ae-c543458f7cdd)
