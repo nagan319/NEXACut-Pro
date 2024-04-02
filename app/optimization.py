@@ -52,26 +52,42 @@ def get_contours(edges: list) -> list: # input in format [((x1, y1), (x2, y2))..
 
     return contours
 
+def get_bounding_box(contour: np.array) -> np.array:
+    x_coords = contour[:, 0]
+    y_coords = contour[:, 1]
+    min_x = np.min(x_coords)
+    max_x = np.max(x_coords)
+    min_y = np.min(y_coords)
+    max_y = np.max(y_coords)
+    return np.array([min_x, max_x, min_y, max_y])
+
+def get_center(contour: np.array) -> list:
+    min_x, max_x, min_y, max_y = get_bounding_box(contour)
+    x_center = (min_x + max_x) / 2
+    y_center = (min_y + max_y) / 2
+    return np.array([x_center, y_center])
+
 def get_outermost_contour(contours: list) -> np.array:
     max_area = 0
     outermost_contour = None
 
     for contour in contours: # area of contour bounding box is calculated, max contour is returned
-        x_coords = contour[:, 0]
-        y_coords = contour[:, 1]
-
-        min_x = np.min(x_coords)
-        max_x = np.max(x_coords)
-        min_y = np.min(y_coords)
-        max_y = np.max(y_coords)
-
+        min_x, max_x, min_y, max_y = get_bounding_box(contour)
         area = (max_x - min_x) * (max_y - min_y)
-
         if area > max_area:
             max_area = area
             outermost_contour = contour
 
     return outermost_contour
+
+def get_radius(contour: np.array) -> float:
+    center = get_center(contour)
+    max_radius = 0
+    for point in contour:
+        radius = np.linalg.norm(point - center)
+        if radius > max_radius:
+            max_radius = radius
+    return max_radius
 
 def smooth_contour(contour: np.array) -> np.array: # makes sure contour has even distribution of points (for nfp algorithm)
     threshold1 = 10
@@ -79,7 +95,6 @@ def smooth_contour(contour: np.array) -> np.array: # makes sure contour has even
     contour = remove_points(contour, threshold1)
     contour = add_points(contour, threshold2)
     return contour
-
 
 def remove_points(contour: np.array, threshold: int): # removes points in areas where density is too high
     if threshold <= 0:
@@ -125,7 +140,7 @@ def add_points(contour: np.array, threshold: int): # adds points in areas of low
 def plot_contours(contours: list):
     plt.figure()
 
-    for i, contour in enumerate(contours):
+    for contour in contours:
         color = random_color()
         for point in contour:
             x, y = point
@@ -135,6 +150,36 @@ def plot_contours(contours: list):
     plt.gca().set_aspect('equal') 
     plt.grid(False)
     plt.show()
+
+def plot_contour_and_circle(contour: np.array):
+    plt.figure()
+    color = random_color()
+
+    for point in contour:
+        x, y = point
+        plt.scatter(x, y, color=color)
+    
+    center = get_center(contour)
+    radius = get_radius(contour)
+
+    color = random_color()
+    plt.scatter(center[0], center[1], color=color)
+
+    angle = 0
+
+    color = random_color()
+    for _ in range(16):
+        angle += math.pi/8
+        x, y = center
+        x += radius*math.cos(angle)
+        y += radius*math.sin(angle)
+        plt.scatter(x, y, color=color)
+
+    plt.grid(True)
+    plt.gca().set_aspect('equal') 
+    plt.grid(False)
+    plt.show()
+
 
 def random_color():
     chars = [str(i) for i in range(10)] + ['a', 'b', 'c', 'd', 'e', 'f']
@@ -146,4 +191,4 @@ contours = get_contours(test_coordinates)
 
 max_contour = get_outermost_contour(contours)
 edited_contour = smooth_contour(max_contour)
-plot_contours([edited_contour])
+plot_contour_and_circle(edited_contour)
