@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 from collections import defaultdict
 from stl import mesh
