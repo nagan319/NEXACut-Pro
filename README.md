@@ -25,9 +25,9 @@ The conversion process for CAD files follows a straightforward approach. Initial
 
 The image conversion process consists of four key stages, achieved via the OpenCV image processing library in Python. Initially, the raw image undergoes resizing and binary conversion via thresholding. Then, additional filtering is applied to reduce noise and refine the binary representation. 
 
-Next, a feature detection algorithm is used to determine the key features of the image, including corners and edges. Although I attempted using OpenCV's default corner detection method, it proved cumbersome for the task, leading to a custom method leveraging dot product computations to evaluate changes in angles between points.
+Next, a feature detection algorithm is used to determine the key features of the image, including corners and edges. Although I attempted using OpenCV's default corner detection method, it proved cumbersome for the task, leading to the creation of a custom method which leverages dot product computations to evaluate changes in angles between points.
 
-Once features are detected, the image is 'flattened' and resized to appropriate dimensions. This image is then converted to SVG and can be used in the optimization algorithm.
+Once features are detected, the image is 'flattened' and resized to appropriate dimensions. This image is then converted to SVG format and can be used in the optimization algorithm.
 
 ## Built-in System for Organizing Digitized CNC Stock
 ![stock](https://github.com/nagan319/NEXACut-Pro/assets/147287567/560f59bf-28ef-4eee-938b-70b62dcd01e8)

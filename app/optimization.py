@@ -125,7 +125,6 @@ def add_points(contour: np.array, threshold: int): # adds points in areas of low
 def plot_contours(contours: list):
     plt.figure()
 
-
     for i, contour in enumerate(contours):
         color = random_color()
         for point in contour:
@@ -141,7 +140,6 @@ def random_color():
     chars = [str(i) for i in range(10)] + ['a', 'b', 'c', 'd', 'e', 'f']
     color = '#'+''.join(random.choice(chars) for _ in range(6))
     return color
-
 
 test_coordinates = read_svg("C:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\test svg files\\RollerConnectorPlate.svg")
 contours = get_contours(test_coordinates)
