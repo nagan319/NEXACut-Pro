@@ -3,7 +3,7 @@ QLineEdit {
     background-color: #1E1E1E;
     color: #BFBFBF; 
     font-size: 16px; 
-    border: 0px;
+    border: 1px solid #BFBFBF;
     border-radius: 0px; 
-    padding: 16px;
+    padding: 15px;
 }

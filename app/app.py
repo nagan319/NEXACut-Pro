@@ -7,19 +7,19 @@ from functools import partial
 from collections import defaultdict
 
 from PyQt6.QtCore import Qt, pyqtSignal, QFile, QTextStream
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit, QMessageBox
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit, QMessageBox, QFrame
 from PyQt6.QtGui import QPixmap
 
 from filepaths import *
 
-from managers.pref_mgr import PreferenceManager
-from managers.router_mgr import RouterManager
-from managers.cad_conv_mgr import CADConversionManager
+from utils.pref_mgr import PreferenceManager
+from utils.router_mgr import RouterManager
+from app.utils.cad_to_svg import CADToSVG
 
 MAX_RES = 4
 
 # todo: fix preference menu always showing default values on startup
-#       fix button spacing in stl import view
+#       create stl save json
 #       make router editing more clean, review functionality
 #       add inventory view
 
@@ -53,7 +53,8 @@ def clear_temporary_data():
         os.remove(filepath)
     for filename in os.listdir(PART_IMPORT_DATA_PATH):
         filepath = os.path.join(PART_IMPORT_DATA_PATH, filename)
-        os.remove(filepath)
+        if filename != PART_IMPORT_INFO_FILENAME:
+            os.remove(filepath)
 
 class MainWindow(QMainWindow):  
 
@@ -188,11 +189,14 @@ class ImportViewWidget(EmptyTabWidget):
     def __init__(self):
         additional_widgets = [] # passed into super init
 
-        main_widget = QWidget()
+        main_widget = QWidget() # includes external padding
         main_layout = QHBoxLayout()
 
+        inner_widget = QWidget()
+        inner_layout = QHBoxLayout()
+        apply_stylesheet(inner_widget, "left-menu.css")
+
         left_widget = QWidget() # file import wrapper widget
-        apply_stylesheet(left_widget, "left-menu.css")
         left_layout = QVBoxLayout()
 
         preview_title = QLabel("Preview")
@@ -209,7 +213,7 @@ class ImportViewWidget(EmptyTabWidget):
 
         delete_button = QPushButton("Remove Selected File")
         apply_stylesheet(delete_button, "router-button.css")
-        delete_button.clicked.connect(self.delete_stl_file)
+        delete_button.clicked.connect(self.remove_file)
 
         delete_button_wrapper_layout.addStretch(1)
         delete_button_wrapper_layout.addWidget(delete_button, 1)
@@ -222,9 +226,12 @@ class ImportViewWidget(EmptyTabWidget):
         left_layout.addStretch(1)
         left_widget.setLayout(left_layout)
 
+        barrier = QWidget()
+        apply_stylesheet(barrier, "barrier.css")
+        barrier.setFixedWidth(1)
+
         right_widget = QWidget()
         right_layout = QVBoxLayout()
-        right_layout.setSpacing(2)
 
         self.import_button = QPushButton("Import Files")
         apply_stylesheet(self.import_button, "router-button.css")
@@ -244,19 +251,18 @@ class ImportViewWidget(EmptyTabWidget):
         self.import_list_layout = QVBoxLayout()
         self.import_list_widget.setLayout(self.import_list_layout)
 
-        save_button = QPushButton("Save")
-        apply_stylesheet(save_button, "router-button.css")
-        save_button.clicked.connect(self.save_imports)
-
         right_layout.addWidget(self.import_button)
         right_layout.addWidget(self.import_list_widget)
-        right_layout.addWidget(save_button)
         right_layout.addStretch(1)
         right_widget.setLayout(right_layout)
 
+        inner_layout.addWidget(left_widget, 3)
+        inner_layout.addWidget(barrier)
+        inner_layout.addWidget(right_widget, 1)
+        inner_widget.setLayout(inner_layout)
+
         main_layout.addStretch(1)
-        main_layout.addWidget(left_widget, 6)
-        main_layout.addWidget(right_widget, 2)
+        main_layout.addWidget(inner_widget, 8)
         main_layout.addStretch(1)
         main_widget.setLayout(main_layout)
         additional_widgets.append(main_widget)
@@ -302,16 +308,15 @@ class ImportViewWidget(EmptyTabWidget):
                 button = QPushButton()
                 button.setCheckable(True)
                 button.setText(file_name)
-                apply_stylesheet(button, "menu-button.css")
+                apply_stylesheet(button, "import-button.css")
 
                 amt_input = QLineEdit()
                 apply_stylesheet(amt_input, "amt-line-edit.css")
                 amt_input.setPlaceholderText(f"1-{self.MAX_AMT_EACH_FILE}")
-                current_id = self.new_id
                 # amt_input.textEdited.connect()
                 amt_input.setText("1")
 
-                cad_converter = CADConversionManager(file_path, CAD_PREVIEW_DATA_PATH, PART_IMPORT_DATA_PATH)
+                cad_converter = CADToSVG(file_path, CAD_PREVIEW_DATA_PATH, PART_IMPORT_DATA_PATH)
                 user_units = get_user_settings()['units']
 
                 inches_in_mm = 0.0393701
@@ -342,17 +347,24 @@ class ImportViewWidget(EmptyTabWidget):
 
     # file deletion
 
-    def delete_stl_file(self):
+    def remove_file(self):
         if self.selected_button_id is not None:
             self.delete_preview_file(self.id_to_filename[self.selected_button_id])
+            self.delete_svg_file(self.id_to_filename[self.selected_button_id])
             self.delete_imported_stl_button(self.selected_button_id)
             self.update_file_preview()
 
-    def delete_preview_file(self, name: str): # removes file from data/cad_preview/data
-            filename = name+'.png'
-            file_path = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+    def delete_preview_file(self, name: str): # removes file from data/cad_preview_data
+        filename = name+'.png'
+        file_path = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    def delete_svg_file(self, name: str): # removes file from data/part_import_data
+        filename = name+'.svg'
+        file_path = os.path.join(PART_IMPORT_DATA_PATH, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
     def delete_imported_stl_button(self, button_id): # deletes button widget, pops from dict, unselects
         wrapper_to_remove, button_to_remove, combobox_to_remove = self.id_to_widgets[button_id]
@@ -370,14 +382,6 @@ class ImportViewWidget(EmptyTabWidget):
             wrapper_to_remove.deleteLater()
 
             self.selected_button_id = None
-
-    # saving imports
-
-    def save_imports(self):
-        filenames = list(self.id_to_filename.values())
-        amounts = list(self.id_to_amount.values())
-        for i, _ in enumerate(filenames):
-            print(f"{filenames[i]}: {amounts[i]}")
     
 class RouterViewWidget(EmptyTabWidget):
     def __init__(self):

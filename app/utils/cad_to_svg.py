@@ -1,5 +1,4 @@
 import os
-import json
 import numpy as np
 from collections import defaultdict
 from stl import mesh
@@ -8,7 +7,7 @@ import matplotlib.pyplot as plt
 MIN_QUANTIZED_VALUE = .01
 MIN_VALUE_DECIMAL_DIGITS = 2
 
-class CADConversionManager:
+class CADToSVG:
     SUPPORTED_PART_FORMATS = ['stl']
 
     def __init__(self, stl_filepath: str, cad_preview_data_folder: str, part_import_data_folder: str, bg_color: str='#1e1e1e', text_color: str='#efefef', plot_color: str='#cc0000'):

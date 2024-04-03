@@ -1,1 +1,0 @@
-from img_conv_mgr import *

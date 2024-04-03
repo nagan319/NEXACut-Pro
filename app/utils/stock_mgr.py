@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 
-class StockManager:
+class StockManager: # doesn't work
 
     def __init__(self, stock_data_folder: str):
         self.stock_directory = stock_data_folder

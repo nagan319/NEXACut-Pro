@@ -6,15 +6,14 @@ from typing import Tuple
 
 from .constants import PLATE_MAX_DIMENSION, MAX_PPMM, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT, NONE_STATE, RAW_STATE, BINARY_STATE, CONTOUR_STATE, FLATTENED_STATE, RAW_EXTENSION, BINARY_EXTENSION, CONTOUR_EXTENSION, FLATTENED_EXTENSION, PREVIEW_FOLDER_PATH
 
-import img_io
-import img_proc
+import app.utils.image_conversion.img_util as img_util
 from .feat_mgr import FeatureManager
 
 # image file only bounded to plate after svg is generated
 # percent used will be calculated in different module
 
 # missing svg functionality
-class ImageConversionManager:
+class ImageToSVG:
 
     def __init__(self, plate_size: Tuple[int, int, int], colors: Tuple): # plate size in mm
 
@@ -23,7 +22,7 @@ class ImageConversionManager:
                 raise ValueError("Invalid plate size")
 
         if len(colors) != 5:
-            raise ValueError("ImageConversionManager requires 5 colors to initialize")
+            raise ValueError("ImageToSVG requires 5 colors to initialize")
         
         for color in colors:
             if len(color) != 3:
@@ -53,16 +52,16 @@ class ImageConversionManager:
 
     def reset_preview(self):
         try:
-            img_io.clear_all_files(PREVIEW_FOLDER_PATH)
+            img_util.clear_all_files(PREVIEW_FOLDER_PATH)
         except(Exception) as e:
             print(e)
 
     def save_external_image_as_raw(self, external_image_path): 
         try:
             self._check_state(NONE_STATE, NONE_STATE)
-            image = img_io.read_image(external_image_path, True)
-            image = img_proc.resize_image(image, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT)
-            img_io.write_image(PREVIEW_FOLDER_PATH, RAW_EXTENSION, image)
+            image = img_util.read_image(external_image_path, True)
+            image = img_util.resize_image(image, MAX_PROCESSING_WIDTH, MAX_PROCESSING_HEIGHT)
+            img_util.write_image(PREVIEW_FOLDER_PATH, RAW_EXTENSION, image)
             self.state = RAW_STATE
                 
         except(Exception) as e:
@@ -72,9 +71,9 @@ class ImageConversionManager:
         try:
             self._check_state(RAW_STATE, BINARY_STATE)
             raw_image_path = os.path.join(PREVIEW_FOLDER_PATH, RAW_EXTENSION)
-            image = img_io.read_image(raw_image_path, True)
-            image = img_proc.convert_image_to_binary(image, threshold_value)
-            img_io.write_image(PREVIEW_FOLDER_PATH, BINARY_EXTENSION, image)
+            image = img_util.read_image(raw_image_path, True)
+            image = img_util.convert_image_to_binary(image, threshold_value)
+            img_util.write_image(PREVIEW_FOLDER_PATH, BINARY_EXTENSION, image)
             self.processing_resolution = image.shape[:2]
             self.state = BINARY_STATE
         
@@ -86,7 +85,7 @@ class ImageConversionManager:
             self._check_state(BINARY_STATE, BINARY_STATE)
             self.feature_manager.draw_features()
             image = self.feature_manager.feature_canvas
-            img_io.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
+            img_util.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
             self.state = CONTOUR_STATE
         
         except(Exception) as e:
@@ -103,10 +102,10 @@ class ImageConversionManager:
         try:
             self._check_state(BINARY_STATE, CONTOUR_STATE)
             binary_image_path = os.path.join(PREVIEW_FOLDER_PATH, BINARY_EXTENSION)
-            image = img_io.read_image(binary_image_path, True)
+            image = img_util.read_image(binary_image_path, True)
             self.__initialize_feature_manager()
             self.feature_manager.get_features(image)
-            img_io.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
+            img_util.write_image(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION, image)
 
         except(Exception) as e:
             print(e)
@@ -116,7 +115,7 @@ class ImageConversionManager:
             
             self._check_state(CONTOUR_STATE)
             contour_image_path = os.path.join(PREVIEW_FOLDER_PATH, CONTOUR_EXTENSION)
-            image = img_io.read_image(contour_image_path, True)
+            image = img_util.read_image(contour_image_path, True)
             width, height = self.output_resolution
 
             top_left = [0, 0]
@@ -127,11 +126,11 @@ class ImageConversionManager:
             initial_corner_points = self.feature_manager.corners
             final_corner_points = np.array([top_left, top_right, bottom_left, bottom_right], dtype=np.float32)
 
-            transformation_matrix = img_proc.get_transformation_matrix(initial_corner_points, final_corner_points)
-            image = img_proc.warp_perspective(image, transformation_matrix, (width, height))
-            image = img_proc.apply_color_mask(image, self.background_color, self.contour_color)
+            transformation_matrix = img_util.get_transformation_matrix(initial_corner_points, final_corner_points)
+            image = img_util.warp_perspective(image, transformation_matrix, (width, height))
+            image = img_util.apply_color_mask(image, self.background_color, self.contour_color)
 
-            img_io.write_image(PREVIEW_FOLDER_PATH, FLATTENED_EXTENSION, image)
+            img_util.write_image(PREVIEW_FOLDER_PATH, FLATTENED_EXTENSION, image)
             self.state = FLATTENED_STATE
             
         except(Exception) as e:
