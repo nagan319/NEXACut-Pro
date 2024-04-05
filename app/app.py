@@ -1,667 +1,868 @@
 import sys
 import os
+import shutil
 import json
 import atexit
+import math
 
-from functools import partial
-from collections import defaultdict
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit
+from PyQt6.QtGui import QPixmap, QFontDatabase, QPalette, QBrush
 
-from PyQt6.QtCore import Qt, pyqtSignal, QFile, QTextStream
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit, QMessageBox, QFrame
-from PyQt6.QtGui import QPixmap
+from filepaths import * # paths to data folders
 
-from filepaths import *
+from utils.stl_parser import STLParser
+from utils.router_util import RouterUtil
+from utils.value_conversion import parse_text
 
-from utils.pref_mgr import PreferenceManager
-from utils.router_mgr import RouterManager
-from app.utils.cad_to_svg import CADToSVG
+# (almost) all file io is handled in app class, methods are called by widget classes
+# one exception is matplotlib-related image saving which is handled by util classes with dst passed in 
+class App(QApplication):
 
-MAX_RES = 4
+    PART_IMPORT_LIMIT = 20 # limits for cad files
+    ROUTER_LIMIT = 10
 
-# todo: fix preference menu always showing default values on startup
-#       create stl save json
-#       make router editing more clean, review functionality
-#       add inventory view
+    MIN_WIDTH = 1200
+    MIN_HEIGHT = 900
+    APP_TITLE = 'NEXACut Pro'
 
-MIN_WIDTH, MIN_HEIGHT = 1600, 900
+    MENU_BUTTONS = [
+        "Home", 
+        "Import Part Files", 
+        "Configure CNC Router", 
+        "Manage Inventory", 
+        "Generate Optimal Placement", 
+        "Configure Preferences"]
 
-def apply_stylesheet(widget: QWidget, stylesheet_file: str):
+    def __init__(self, argv):
+        super().__init__(argv)
+        atexit.register(self.__close_app)
 
-    stylesheet_path = os.path.join(STYLESHEET_FOLDER_PATH, stylesheet_file)
-    if not os.path.exists(stylesheet_path):
-        raise FileNotFoundError(f"Stylesheet file {stylesheet_path} does not exist")
-    with open(stylesheet_path, 'r') as f:
-        stylesheet = f.read()
-        widget.setStyleSheet(stylesheet)
+        # permanent data
+        self.user_preferences = self.load_user_preferences()
 
-def edit_key_name(str: str): # snake_case to Snake Case
-        words = str.split("_")
-        for i, word in enumerate(words):
-            words[i] = word.capitalize()
+        self.router_data = self.load_router_data()
+        self.router_names = self.load_folder_contents(ROUTER_DATA_FOLDER_PATH)
+
+        self.stock_data = self.load_stock_data()
+
+        # temporary data
+        self.imported_part_files = []
         
-        return " ".join(words)
-
-def get_user_settings():
-    if os.path.exists(USER_PREFERENCE_FILE_PATH):
-        with open(USER_PREFERENCE_FILE_PATH) as f:
-            data = json.load(f)
-            return data
-        
-def clear_temporary_data():
-    for filename in os.listdir(CAD_PREVIEW_DATA_PATH):
-        filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
-        os.remove(filepath)
-    for filename in os.listdir(PART_IMPORT_DATA_PATH):
-        filepath = os.path.join(PART_IMPORT_DATA_PATH, filename)
-        if filename != PART_IMPORT_INFO_FILENAME:
-            os.remove(filepath)
-
-class MainWindow(QMainWindow):  
-
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("NEXACut Pro")
-        self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
-        
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0) 
-        main_layout.setSpacing(0)
-
-        self.left_menu = LeftMenu()
-        self.stacked_widget = StackedWidget()
-
-        main_layout.addWidget(self.left_menu, 20)
-        main_layout.addWidget(self.stacked_widget, 80)
-
-        central_widget = QWidget()
-        central_widget.setLayout(main_layout)
-        self.setCentralWidget(central_widget)
-
-        # connects menu button clicks to window switching
-        self.left_menu.menu_button_clicked.connect(self.stacked_widget.switch_view)
-
-        atexit.register(self.close_app)
+    def load_user_preferences(self) -> dict:
+        return self.read_json(USER_PREFERENCE_FILE_PATH)
     
-    def close_app(self):
-        clear_temporary_data()
+    def save_user_preferences(self):
+        self.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
 
-class LeftMenu(QWidget):
+    def get_preference_value(self, key: str): # get value from key in user preferences
+        if key not in self.user_preferences:
+            raise ValueError(f"Key {key} not in user preferences")
+        
+        return self.user_preferences[key]
+    
+    def load_router_data(self): # loads data from all routers in folder (allows for easier modification)
 
-    menu_button_clicked = pyqtSignal(int)
+        router_info = []
 
-    def __init__(self):
+        all_routers = self.load_folder_contents(ROUTER_DATA_FOLDER_PATH)
+
+        for router in all_routers:
+            router_path = os.path.join(ROUTER_DATA_FOLDER_PATH, router)
+            router_info.append(self.read_json(router_path))
+
+        return router_info
+    
+    def save_router_data(self): # saves modified router data
+        
+        self.clear_folder_contents(ROUTER_DATA_FOLDER_PATH)
+
+        for i, name in enumerate(self.router_names):
+            filepath = os.path.join(ROUTER_DATA_FOLDER_PATH, name)
+            self.save_json(filepath, self.router_data[i])
+
+    def load_stock_data(self): # loads data from selected stock folder
+        stock_name = self.get_preference_value('stock')
+
+        if len(stock_name) == 0: 
+            return
+        
+        return
+
+    def clear_temporary_data(self):
+        self.clear_folder_contents(CAD_PREVIEW_DATA_PATH)
+        self.clear_folder_contents(IMAGE_PREVIEW_DATA_PATH)
+        self.clear_folder_contents(ROUTER_PREVIEW_DATA_PATH)
+        self.save_router_data()
+
+    def __close_app(self):
+        self.save_user_preferences()
+        self.clear_temporary_data()
+
+    def apply_stylesheet(self, widget: QWidget, stylesheet_file: str): # read stylesheet info from css
+
+        stylesheet_path = os.path.join(STYLESHEET_FOLDER_PATH, stylesheet_file)
+
+        if not os.path.exists(stylesheet_path):
+            raise FileNotFoundError(f"Stylesheet file {stylesheet_path} does not exist")
+        
+        with open(stylesheet_path, 'r') as f:
+            stylesheet = f.read()
+            widget.setStyleSheet(stylesheet)
+
+    def load_folder_contents(self, filepath: str): # get filenames in folder
+
+        if not os.path.exists(filepath):
+            return []
+        
+        return os.listdir(filepath)
+    
+    def clear_folder_contents(self, dirpath: str, *exceptions: str): # clears directory except certain files
+
+        if not os.path.exists(dirpath):
+            return
+        
+        for filename in os.listdir(dirpath):
+            if filename not in exceptions:
+                filepath = os.path.join(dirpath, filename)
+                os.remove(filepath)
+    
+    def copy_file(self, src_path: str, dst_path: str): # copies a to b
+
+        if not (os.path.exists(src_path) or os.path.exists(dst_path)):
+            return
+        
+        os.remove(dst_path)
+        shutil.copyfile(src_path, dst_path)
+
+    def read_json(self, filepath: str): # extract data from json
+
+        if not os.path.exists(filepath):
+            return 
+        
+        if os.path.splitext(filepath)[1].lower() != '.json':
+            return
+        
+        with open(filepath, 'r') as file:
+            data = json.load(file)
+        
+        return data
+    
+    def save_json(self, filepath: str, data: dict): # saves dict to json
+        
+        if os.path.splitext(filepath)[1].lower() != '.json':
+            return
+
+        with open(filepath, 'w') as file:
+            json.dump(data, file, indent=4)
+
+class MainWindow(QMainWindow):
+
+    def __init__(self, app_instance: App): # gives access to app data/methods without needing to directly inherit
         super().__init__()
+        self.app = app_instance
 
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        self.setWindowTitle(self.app.APP_TITLE)
+        self.setMinimumSize(self.app.MIN_WIDTH, self.app.MIN_HEIGHT)
+        QFontDatabase.addApplicationFont(FONT_PATH)
+        self.__init_gui__()
+    
+    def __init_gui__(self):
+        self.__layout = QHBoxLayout()
+        self.__layout.setContentsMargins(0, 0, 0, 0) 
+        self.__layout.setSpacing(0)
 
-        buttons = [
-            "Home", 
-            "Import Part Files", 
-            "Configure CNC Router", 
-            "Manage Inventory", 
-            "Generate Optimal Placement", 
-            "Configure Preferences"]
+        self.__menu = Menu(self.app)
+        self.__content_viewer = ContentViewer(self.app)
+
+        self.__layout.addWidget(self.__menu, 2)
+        self.__layout.addWidget(self.__content_viewer, 8)
+
+        self.__widget = QWidget()
+        self.__widget.setLayout(self.__layout)
+        self.setCentralWidget(self.__widget)
+
+        self.__menu.button_clicked.connect(self.__content_viewer.set_view) # changes view on button click
+
+class Menu(QWidget):
+
+    button_clicked = pyqtSignal(int)
+
+    def __init__(self, app_instance: App):
+        super().__init__()
+        self.app = app_instance
+        self.__init_gui__()
+
+    def __init_gui__(self):
+
+        self.app.apply_stylesheet(self, "window.css")
+        self.__layout = QVBoxLayout()
+        self.__layout.setContentsMargins(0, 0, 0, 0)
+        self.__layout.setSpacing(0)
+
+        buttons = self.app.MENU_BUTTONS
 
         for i, button_text in enumerate(buttons):
             button = QPushButton(button_text)
-            apply_stylesheet(button, "menu-button.css")
-            button.clicked.connect(lambda _, index=i: self.menu_button_clicked.emit(index)) # button clicked boolean signal is ignored
-            layout.addWidget(button, 1)
+            self.app.apply_stylesheet(button, "generic-button.css")
+            button.clicked.connect(lambda _, index=i: self.button_clicked.emit(index)) # button clicked boolean signal is ignored, sends button index
+            self.__layout.addWidget(button, 1)
 
-        bottom_widget = QWidget() # fixes random white bg
-        apply_stylesheet(bottom_widget, "left-menu.css")
+        self.__bottom_widget = QWidget() # purely for background
+        self.app.apply_stylesheet(self.__bottom_widget, "light.css")
 
-        layout.addWidget(bottom_widget, 10)
-        self.setLayout(layout)
+        self.__layout.addWidget(self.__bottom_widget, 10)
+        self.setLayout(self.__layout)
+    
+class ContentViewer(QStackedWidget):
 
-class StackedWidget(QStackedWidget):
-
-    def __init__(self):
+    def __init__(self, app_instance: App):
         super().__init__()
-        apply_stylesheet(self, "stacked-widget.css")
+        self.app = app_instance
+        self.__init_gui__()
+    
+    def __init_gui__(self):
+        self.app.apply_stylesheet(self, "light.css")
         self.setCurrentIndex(0)
-        self.widgets = [
-            HomeViewWidget(), 
-            ImportViewWidget(),  
-            RouterViewWidget(), 
-            InventoryViewWidget(), 
-            PlacementViewWidget(), 
-            PreferenceViewWidget()]
-        for widget in self.widgets:
+        self.__views = [
+            HomeWidget(self.app),
+            ImportWidget(self.app),
+            RouterWidget(self.app)
+        ]
+        for widget in self.__views:
             self.addWidget(widget)
 
-    def switch_view(self, index: int):
-        if 0 <= index < len(self.widgets):
-
-            old_widget = self.widgets[index]
-            self.removeWidget(old_widget)
-            old_widget.deleteLater()  
-
-            new_widget = type(old_widget)()
-
-            if type(new_widget) != ImportViewWidget: # clears import preview images in case settings are changed etc.
-                clear_temporary_data()
-
-            self.insertWidget(index, new_widget)
-            self.widgets[index] = new_widget
+    def set_view(self, index: int):
+        if 0 <= index < len(self.__views):
             self.setCurrentIndex(index)
 
-class HomeViewWidget(QWidget):
-    def __init__(self):
+class HomeWidget(QWidget):
+    def __init__(self, app_instance: App):
         super().__init__()
-        layout = QVBoxLayout()
-        logo_label = QLabel()
+        self.app = app_instance
+        self.__init_gui__()
+
+    def __init_gui__(self):
+        self.__layout = QVBoxLayout()
+
+        self.__logo_label = QLabel()
         script_path = os.path.dirname(__file__)
         logo_path = os.path.join(script_path, 'graphics', 'NEXACut Logo.png')
         pixmap = QPixmap(logo_path)
         scaled_pixmap = pixmap.scaled(1000, 500)
-        logo_label.setPixmap(scaled_pixmap)
-        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
-        apply_stylesheet(app_description_label, "app-description-label.css")
-        layout.addStretch(1)
-        layout.addWidget(logo_label)
-        layout.addStretch(1)
-        layout.addWidget(app_description_label)
-        self.setLayout(layout)
-        print('home view initialized')
+        self.__logo_label.setPixmap(scaled_pixmap)
+        self.__logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-class EmptyTabWidget(QWidget):
-    def __init__(self, title_text: str, *widgets):
+        self.__app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
+        self.app.apply_stylesheet(self.__app_description_label, "small-text.css")
+
+        self.__layout.addStretch()
+        self.__layout.addWidget(self.__logo_label)
+        self.__layout.addStretch()
+        self.__layout.addWidget(self.__app_description_label)
+
+        self.setLayout(self.__layout)
+
+class WidgetTemplate(QWidget): # template for widgets with standard layout (widgets inherit from this but can also access app)
+
+    MARGIN_WIDTH = 1
+    WIDGET_WIDTH = 68
+
+    def __init__(self, app_instance: App):
         super().__init__()
-        layout = QVBoxLayout()
-        title = QLabel(title_text)
-        apply_stylesheet(title, "title.css")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
-        for widget in widgets:
-            layout.addWidget(widget)
-        layout.addStretch(1)
-        self.setLayout(layout)
+        self.app = app_instance # can be accessed from child classes
 
-class ImportViewWidget(EmptyTabWidget):
+    def __init_template_gui__(self, title_text: str, core_widget: QWidget): # called by child class after gui is configured
 
-    MAX_IMPORT_FILES = 8
-    MAX_AMT_EACH_FILE = 9
+        self.__main_layout = QHBoxLayout()
 
-    def __init__(self):
-        additional_widgets = [] # passed into super init
+        self.__content_widget = QWidget()
+        self.__content_layout = QVBoxLayout()
 
-        main_widget = QWidget() # includes external padding
-        main_layout = QHBoxLayout()
+        self.__title = QLabel(title_text)
+        self.app.apply_stylesheet(self.__title, "title.css")
+        self.__title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        inner_widget = QWidget()
-        inner_layout = QHBoxLayout()
-        apply_stylesheet(inner_widget, "left-menu.css")
+        self.__content_layout.addWidget(self.__title, 1)
+        self.__content_layout.addWidget(core_widget, 9)
+        self.__content_layout.addStretch(1)
+        self.__content_widget.setLayout(self.__content_layout)
 
-        left_widget = QWidget() # file import wrapper widget
-        left_layout = QVBoxLayout()
+        self.__main_layout.addStretch(self.MARGIN_WIDTH)
+        self.__main_layout.addWidget(self.__content_widget, self.WIDGET_WIDTH)
+        self.__main_layout.addStretch(self.MARGIN_WIDTH)
 
-        preview_title = QLabel("Preview")
-        preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        apply_stylesheet(preview_title, "text-widget.css")
+        self.setLayout(self.__main_layout)
 
-        self.image_view = QLabel("No File Selected") # displays matplotlib png from data/cad_preview_data
-        apply_stylesheet(self.image_view, "app-description-label.css")
-        self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
+class ArrowButton(QPushButton):
 
-        delete_button_wrapper = QWidget()
-        delete_button_wrapper_layout = QHBoxLayout()
-
-        delete_button = QPushButton("Remove Selected File")
-        apply_stylesheet(delete_button, "router-button.css")
-        delete_button.clicked.connect(self.remove_file)
-
-        delete_button_wrapper_layout.addStretch(1)
-        delete_button_wrapper_layout.addWidget(delete_button, 1)
-        delete_button_wrapper_layout.addStretch(1)
-        delete_button_wrapper.setLayout(delete_button_wrapper_layout)
-
-        left_layout.addWidget(preview_title, 1)
-        left_layout.addWidget(self.image_view, 8)
-        left_layout.addWidget(delete_button_wrapper, 1)
-        left_layout.addStretch(1)
-        left_widget.setLayout(left_layout)
-
-        barrier = QWidget()
-        apply_stylesheet(barrier, "barrier.css")
-        barrier.setFixedWidth(1)
-
-        right_widget = QWidget()
-        right_layout = QVBoxLayout()
-
-        self.import_button = QPushButton("Import Files")
-        apply_stylesheet(self.import_button, "router-button.css")
-        self.import_button.clicked.connect(self.import_stl_file)
-
-        self.id_to_filename = defaultdict(int) # maps button ids to filenames (text on button)
-        self.id_to_amount = defaultdict(int) # amount of each file
-        self.id_to_widgets = defaultdict(int) # tuple containing wrapper widget, scrollbox, and button
-
-        self.import_list_widget = QWidget()
-        self.import_list_button_group = QButtonGroup()
-        self.selected_button_id = None
-        self.new_id = 0
-
-        self.import_list_button_group.setExclusive(True) # only possible to check one button at a time
-        self.import_list_button_group.buttonClicked.connect(self.selection_changed_handler)
-        self.import_list_layout = QVBoxLayout()
-        self.import_list_widget.setLayout(self.import_list_layout)
-
-        right_layout.addWidget(self.import_button)
-        right_layout.addWidget(self.import_list_widget)
-        right_layout.addStretch(1)
-        right_widget.setLayout(right_layout)
-
-        inner_layout.addWidget(left_widget, 3)
-        inner_layout.addWidget(barrier)
-        inner_layout.addWidget(right_widget, 1)
-        inner_widget.setLayout(inner_layout)
-
-        main_layout.addStretch(1)
-        main_layout.addWidget(inner_widget, 8)
-        main_layout.addStretch(1)
-        main_widget.setLayout(main_layout)
-        additional_widgets.append(main_widget)
-
-        super().__init__("Import Part Files", *additional_widgets)
-        print('import view initialized')
-
-    # file selection
-
-    def selection_changed_handler(self, button):
-        self.selected_button_id = self.import_list_button_group.id(button)
-        self.update_file_preview()
-
-    def update_file_preview(self): # selects file to display in preview widget
-        if self.selected_button_id is None:
-            self.image_view.setText("No File Selected")
+    def __init__(self, app_instance: App, left_right: bool):
+        super().__init__()
+        self.app = app_instance
+        if left_right:
+            self.setText('>')
         else:
-            image_name = self.id_to_filename[self.selected_button_id] + '.png'
-            image_path = os.path.join(CAD_PREVIEW_DATA_PATH, image_name)
-            pixmap = QPixmap(image_path)
-            self.image_view.setPixmap(pixmap)
+            self.setText('<')
+        self.app.apply_stylesheet(self, 'small-button.css')
 
-    # adding new file
+class WidgetViewer(QStackedWidget): # image viewing 'carousel' (basically grid view)
 
-    # all imported files to use mm
-    def import_stl_file(self):
+    MAX_WIDGETS_X = 4
+    MAX_WIDGETS_Y = 2
 
-        if len(self.id_to_widgets) >= self.MAX_IMPORT_FILES: 
-            return
+    def __init__(self, app_instance: App, widgets_x: int, widgets_y: int,  widgets: list): # amount of objects in view 
 
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "STL Files (*.stl)")
-        file_name = os.path.basename(file_path)[:-4] # no extension
+        self.allowed_types = [QWidget, STLFileWidget] 
 
-        for i in range(self.new_id): # prevents import of existing files
-            if self.id_to_filename[i] == file_name:
+        if widgets_x > self.MAX_WIDGETS_X or widgets_x <= 0:
+            raise ValueError(f"widgets_x must be in range 0-{self.MAX_WIDGETS_X}")
+        if widgets_y > self.MAX_WIDGETS_Y or widgets_y <= 0:    
+            raise ValueError(f"widgets_y must be in range 0-{self.MAX_WIDGETS_Y}")
+        for widget in widgets:
+            if type(widget) not in self.allowed_types:
+                raise ValueError("List must contain widgets only")
+
+        super().__init__()
+
+        self.app = app_instance
+        self.widgets_x = widgets_x
+        self.widgets_y = widgets_y
+
+        self.curr_tab = 0
+        self.widgets = widgets
+        
+        self.update_view()
+
+    def update_view(self):
+
+        for i in reversed(range(self.count())):
+            widget = self.widget(i)
+            self.removeWidget(widget)
+
+        for i in range(self._get_max_tab_idx()+1):
+            widget = self.get_tab(i)
+            self.addWidget(widget)
+
+        self.setCurrentIndex(self.curr_tab)
+
+    def append_widgets(self, widgets: list): 
+        for widget in widgets:
+            if type(widget) in self.allowed_types:
+                self.widgets.append(widget)
+        self.update_view()
+
+    def pop_widget(self, widget_idx: int):
+        if widget_idx >= 0 and widget_idx < len(self.widgets):
+            try: 
+                self.widgets.pop(widget_idx)
+                self.update_view()
+            except Exception: # Avoids IndexError due to lag
                 return
 
-        if file_path:
-            try:
-                button_wrapper = QWidget()
-                button_wrapper_layout = QHBoxLayout()
-
-                button = QPushButton()
-                button.setCheckable(True)
-                button.setText(file_name)
-                apply_stylesheet(button, "import-button.css")
-
-                amt_input = QLineEdit()
-                apply_stylesheet(amt_input, "amt-line-edit.css")
-                amt_input.setPlaceholderText(f"1-{self.MAX_AMT_EACH_FILE}")
-                # amt_input.textEdited.connect()
-                amt_input.setText("1")
-
-                cad_converter = CADToSVG(file_path, CAD_PREVIEW_DATA_PATH, PART_IMPORT_DATA_PATH)
-                user_units = get_user_settings()['units']
-
-                inches_in_mm = 0.0393701
-
-                if user_units == 'Imperial':
-                    cad_converter.save_preview_image(inches_in_mm)
-                else:
-                    cad_converter.save_preview_image() # no scaling necessary
-                cad_converter.save_as_svg()
-
-                # dict-like structures containing button and input widgets, wrappers
-                self.import_list_button_group.addButton(button, id=self.new_id)
-                self.id_to_widgets[self.new_id] = (button_wrapper, button, amt_input)
-
-                button_wrapper_layout.addWidget(button, 3)
-                button_wrapper_layout.addWidget(amt_input, 1)
-                button_wrapper.setLayout(button_wrapper_layout)
-
-                self.import_list_layout.addWidget(button_wrapper)
-
-                self.id_to_amount[self.new_id] = 1
-                self.id_to_filename[self.new_id] = file_name
-
-                self.new_id += 1
-            
-            except Exception as e: # includes invalid stl etc.
-                print(e)
-
-    # file deletion
-
-    def remove_file(self):
-        if self.selected_button_id is not None:
-            self.delete_preview_file(self.id_to_filename[self.selected_button_id])
-            self.delete_svg_file(self.id_to_filename[self.selected_button_id])
-            self.delete_imported_stl_button(self.selected_button_id)
-            self.update_file_preview()
-
-    def delete_preview_file(self, name: str): # removes file from data/cad_preview_data
-        filename = name+'.png'
-        file_path = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    def delete_svg_file(self, name: str): # removes file from data/part_import_data
-        filename = name+'.svg'
-        file_path = os.path.join(PART_IMPORT_DATA_PATH, filename)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    def delete_imported_stl_button(self, button_id): # deletes button widget, pops from dict, unselects
-        wrapper_to_remove, button_to_remove, combobox_to_remove = self.id_to_widgets[button_id]
-
-        if button_to_remove:
-
-            self.import_list_button_group.removeButton(button_to_remove)
-
-            self.id_to_widgets.pop(button_id)
-            self.id_to_filename.pop(self.selected_button_id)
-            self.id_to_amount.pop(button_id)
-
-            button_to_remove.deleteLater()
-            combobox_to_remove.deleteLater()
-            wrapper_to_remove.deleteLater()
-
-            self.selected_button_id = None
+    def _get_max_tab_idx(self):
+        return 0 if len(self.widgets) == 0 else math.ceil(len(self.widgets) / (self.widgets_x * self.widgets_y)) - 1
     
-class RouterViewWidget(EmptyTabWidget):
-    def __init__(self):
-        additional_widgets = []
-        self.router_manager = RouterManager(ROUTER_DATA_FOLDER_PATH)
+    def prev_tab(self):
+        if self.curr_tab > 0:
+            self.curr_tab -= 1
+        self.update_view()
 
-        main_widget = QWidget()
-        main_layout = QHBoxLayout()
+    def next_tab(self):
+        if self.curr_tab < self._get_max_tab_idx():
+            self.curr_tab += 1
+        self.update_view()
 
-        left_widget = QWidget()
-        left_layout = self.get_left_layout_new(self.router_manager.value_ranges)
-        print('left layout initialized')
-
-        left_widget.setLayout(left_layout)
-        apply_stylesheet(left_widget, "left-menu.css")
-
-        right_widget = QWidget()
-        right_layout = QVBoxLayout()
-
-        self.router_list_combobox = QComboBox()
-        self.router_list_combobox.addItem("None")
-        for router_file in self.router_manager.routers:
-            self.router_list_combobox.addItem(router_file[:-5]) # removes .json ending            
-        apply_stylesheet(self.router_list_combobox, "combo-box.css")
-        self.router_list_combobox.currentIndexChanged.connect(lambda: self.select_router(self.router_list_combobox.currentText())) # calls with name arg
-
-        select_router_text = QLabel("Select Router: ")
-        apply_stylesheet(select_router_text, "text-widget.css")
-
-        right_layout.addWidget(select_router_text)
-        right_layout.addWidget(self.router_list_combobox)
-        right_layout.addStretch(1)
-        right_widget.setLayout(right_layout)
-
-        main_layout.addStretch(1)
-        main_layout.addWidget(left_widget, 6)
-        main_layout.addWidget(right_widget, 2)
-        main_layout.addStretch(1)
-        main_widget.setLayout(main_layout)
-
-        additional_widgets.append(main_widget)
-
-        super().__init__("Configure CNC Router", *additional_widgets)
-        print('router view initialized')
-
-    def get_left_layout_new(self, router_mgr_val_ranges: dict):
-        return self.get_left_layout(router_mgr_val_ranges)
-
-    def get_left_layout(self, router_mgr_val_ranges: dict, router_data: dict=None):
-
-        new_router = True if router_data is None else False
-
-        left_layout = QVBoxLayout()
-
-        router_title = QLabel("New Router")
-        router_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        apply_stylesheet(router_title, "text-widget.css")
-
-        self.input_widgets = []
-
-        left_layout.addWidget(router_title)
-
-        for key in router_mgr_val_ranges:
-            value = router_mgr_val_ranges[key] # range for allowed values
-            router_option_widget = QWidget()
-            router_option_layout = QHBoxLayout()
-
-            key_widget = QLabel(f"{edit_key_name(key)}: ")
-            apply_stylesheet(key_widget, "text-widget.css")
-
-            value_input = QLineEdit()
-            self.input_widgets.append(value_input)
-            apply_stylesheet(value_input, "line-input.css")
-            value_input.setPlaceholderText(f"{value[0]}-{value[1]} mm")
-
-            if not new_router:
-                value_input.setText(f"{router_data[key]} mm")
-
-            router_option_layout.addWidget(key_widget, 1)
-            router_option_layout.addStretch(1)
-            router_option_layout.addWidget(value_input)
-
-            router_option_widget.setLayout(router_option_layout)
-            left_layout.addWidget(router_option_widget)
-            
-        bottom_widget = QWidget()
-        bottom_layout = QHBoxLayout()
-
-        add_router_button = QPushButton("Save")
-        apply_stylesheet(add_router_button, "router-button.css")
-        add_router_button.clicked.connect(self.add_router)
-        if not new_router:
-            delete_router_button = QPushButton("Delete")
-            apply_stylesheet(delete_router_button, "router-button.css")
-
-        bottom_layout.addStretch(1)
-        bottom_layout.addWidget(add_router_button, 1)
-        if not new_router:
-            bottom_layout.addWidget(delete_router_button, 1)
-        bottom_layout.addStretch(1)
-
-        bottom_widget.setLayout(bottom_layout)
-
-        left_layout.addWidget(bottom_widget)
-        left_layout.addStretch(1)
+    def get_tab(self, tab_idx: int) -> QWidget:
+        if tab_idx < 0 or tab_idx > self._get_max_tab_idx():
+            return
         
-        return left_layout
-
-    def select_router(self, router_name: str):
-        if self.router_list_combobox.currentIndex == 0: # none selected
-            for i, _ in enumerate(self.input_widgets):
-                self.input_widgets[i].setText("banana") # fix this carp
-        else:
-            self.router_manager.select_router(router_name)
-            selected_router_values = self.router_manager.router_data.values()
-            for i, value in enumerate(selected_router_values):
-                self.input_widgets[i].setText(str(value))
-
-    def add_router(self):
-        try:
-            values = [int(self.input_widgets[i].text()) for i, _ in enumerate(self.input_widgets)]
-            limit_values = self.router_manager.value_ranges.values()
-            for i, lim_value in enumerate(limit_values):
-                min_value = lim_value[0]
-                max_value = lim_value[1]
-                if values[i] < min_value or values[i] > max_value:
-                    raise ValueError("Input value out of range")
-            self.router_manager.add_router('test', values)
-            self.router_list_combobox.addItem('test')
-            for widget in self.input_widgets:
-                widget.setText("")
-            self.router_manager.update_properties()
-
-        except Exception as e:
-            print(e)
-
-class InventoryViewWidget(EmptyTabWidget):
-    def __init__(self):
-        additional_widgets = []
+        # limits for which widgets are going to be shown
+        min_widget_idx = tab_idx * self.widgets_x * self.widgets_y
+        full_max_idx = (tab_idx+1) * self.widgets_x * self.widgets_y # if view is full
+        max_widget_idx = full_max_idx if full_max_idx < len(self.widgets) else len(self.widgets) - 1
 
         main_widget = QWidget()
-        main_layout = QHBoxLayout()
+        main_layout = QHBoxLayout() # includes left/right arrow keys if relevant, applied to 'self'
 
-        left_widget = QWidget()  # view individual plates and previews
-        apply_stylesheet(left_widget, "left-menu.css")
-        left_layout = QVBoxLayout()
+        view_widget = QWidget()
+        view_layout = QVBoxLayout()
 
-        top_wrapper = QWidget()
-        top_wrapper_layout = QHBoxLayout()
+        for i in range(self.widgets_y):
 
-        preview_title = QLabel("Select Plate: ")
-        preview_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        apply_stylesheet(preview_title, "text-widget.css")
-
-        plate_select_combobox = QComboBox()
-        apply_stylesheet(plate_select_combobox, "combo-box.css")
-
-        top_wrapper_layout.addWidget(preview_title, 1)
-        top_wrapper_layout.addWidget(plate_select_combobox, 1)
-        top_wrapper_layout.addStretch(2)
-        top_wrapper.setLayout(top_wrapper_layout)
-
-        self.image_view = QLabel("No Plate Selected")
-        apply_stylesheet(self.image_view, "app-description-label.css")
-        self.image_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_view.setMinimumHeight(int(MIN_HEIGHT*.71))
-
-        button_wrapper = QWidget()
-        button_wrapper_layout = QHBoxLayout()
-
-        add_new_button = QPushButton("Add New")
-        apply_stylesheet(add_new_button, "router-button.css")
-
-        delete_button = QPushButton("Delete Selected")
-        apply_stylesheet(delete_button, "router-button.css")
-
-        button_wrapper_layout.addStretch(1)
-        button_wrapper_layout.addWidget(add_new_button, 1)
-        button_wrapper_layout.addWidget(delete_button, 1)
-        button_wrapper_layout.addStretch(1)
-        button_wrapper.setLayout(button_wrapper_layout)
-
-        left_layout.addWidget(top_wrapper, 1)
-        left_layout.addWidget(self.image_view, 8)
-        left_layout.addWidget(button_wrapper, 1)
-        left_widget.setLayout(left_layout)
-
-        right_widget = QWidget()
-        right_layout = QVBoxLayout()
-
-        self.stock_list_combobox = QComboBox()
-        self.stock_list_combobox.addItem("None")      
-        apply_stylesheet(self.stock_list_combobox, "combo-box.css")
-        # self.stock_list_combobox.currentIndexChanged.connect(lambda: self.select_router(self.stock_list_combobox.currentText())) # calls with name arg
-
-        select_router_text = QLabel("Select Stock: ")
-        apply_stylesheet(select_router_text, "text-widget.css")
-
-        right_layout.addWidget(select_router_text)
-        right_layout.addWidget(self.stock_list_combobox)
-        right_layout.addStretch(1)
-        right_widget.setLayout(right_layout)
-
-        main_layout.addStretch(1)
-        main_layout.addWidget(left_widget, 6)
-        main_layout.addWidget(right_widget, 2)
-        main_layout.addStretch(1)
-        main_widget.setLayout(main_layout)
-
-        additional_widgets.append(main_widget)
-
-        super().__init__("Manage Inventory", *additional_widgets)
-        print('inventory view initialized')
-
-class PlacementViewWidget(EmptyTabWidget):
-    def __init__(self):
-        super().__init__("Generate Optimal Placement")
-        print('placement view initialized')
-
-class PreferenceViewWidget(EmptyTabWidget):
-    def __init__(self):
-        additional_widgets = []
-
-        main_widget = QWidget() # includes side margins
-        main_layout = QHBoxLayout()
-
-        central_widget = QWidget()
-        central_layout = QVBoxLayout()
-
-        self.preference_manager = PreferenceManager(MAX_RES, ROUTER_DATA_FOLDER_PATH, STOCK_DATA_FOLDER_PATH, DEFAULT_PREFERENCE_FILE_PATH, USER_PREFERENCE_FILE_PATH)
-
-        for current_key in self.preference_manager.preference_data: 
-            current_val = self.preference_manager.preference_data[current_key]
             row_widget = QWidget()
-            row_layout = QHBoxLayout()
+            row_widget.setMinimumHeight(int(self.app.MIN_HEIGHT*.8/self.widgets_y))
+            self.app.apply_stylesheet(row_widget, "light.css")
+            row_widget_layout = QHBoxLayout()
 
-            preference_value_label = QLabel(f"{edit_key_name(current_key)}: ")
-            apply_stylesheet(preference_value_label, "text-widget.css")
+            for j in range(self.widgets_x):
 
-            combo_box = QComboBox() 
-            options = self.preference_manager.preference_options[current_key] # all possible values for key
-            for current_val in options:
-                combo_box.addItem(str(current_val))
-            if len(options) == 0:
-                combo_box.addItem("None")
+                curr_widget_idx = min_widget_idx + i*self.widgets_x + j
 
-            if current_val in options:
-                combo_box.setCurrentText(current_val)
+                if curr_widget_idx > max_widget_idx:
+                    row_widget_layout.addStretch(1)
 
-            combo_box.currentIndexChanged.connect(partial(self.selection_changed, current_key, combo_box))
-            apply_stylesheet(combo_box, "combo-box.css")
+                else: # add widget from widgets list
+                    curr_widget = self.widgets[curr_widget_idx]
+                    row_widget_layout.addWidget(curr_widget, 1)
+            
+            row_widget.setLayout(row_widget_layout)
+            view_layout.addWidget(row_widget, 1)
+        
+        view_widget.setLayout(view_layout)
 
-            row_layout.addWidget(preference_value_label, 1)
-            row_layout.addStretch(1)
-            row_layout.addWidget(combo_box, 1)
-            row_widget.setLayout(row_layout)
+        if tab_idx > 0:
+            left_arrow = ArrowButton(self.app, False)
+            left_arrow.pressed.connect(self.prev_tab)
+            main_layout.addWidget(left_arrow, 1)
+        else:
+            main_layout.addStretch(1)
 
-            central_layout.addWidget(row_widget)
+        main_layout.addWidget(view_widget, 18)
 
-        central_widget.setLayout(central_layout)
-        apply_stylesheet(central_widget, "left-menu.css")
+        if tab_idx < self._get_max_tab_idx():
+            right_arrow = ArrowButton(self.app, True)
+            right_arrow.pressed.connect(self.next_tab)
+            main_layout.addWidget(right_arrow, 1)
+        else:
+            main_layout.addStretch(1)
 
-        main_layout.addStretch(2)
-        main_layout.addWidget(central_widget, 6)
-        main_layout.addStretch(2)
         main_widget.setLayout(main_layout)
 
-        additional_widgets.append(main_widget)
+        return main_widget
 
-        super().__init__("Configure Preferences", *additional_widgets)
-        print('preference view initialized')
+class STLFileWidget(QWidget): 
     
-    def selection_changed(self, key: str, combo_box: QComboBox, index: int):
-        new_value = combo_box.itemText(index)
-        self.preference_manager.update_preference(key, new_value)
+    deleteRequested = pyqtSignal(str)
+    amountEdited = pyqtSignal(str, int)
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    print('app running')
-    window = MainWindow()
-    window.show()
-    print('window showing')
+    def __init__(self, app_instance: App, file_name: str, png_location: str):
+
+        super().__init__()
+
+        self.app = app_instance
+        self.file_name = file_name
+        self.png_location = png_location
+
+        layout = QVBoxLayout()
+
+        preview_label = QLabel()
+        preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        pixmap = QPixmap(self.png_location)
+        preview_label.setPixmap(pixmap)
+
+        bottom_widget = QWidget()
+        bottom_widget_layout = QHBoxLayout()
+
+        amt_input = QLineEdit()
+        amt_input.setPlaceholderText("Amount")
+        self.app.apply_stylesheet(amt_input, 'small-input-box.css')
+        amt_input.textEdited.connect(self.on_amount_edited)
+        amt_input.setText("1")
+
+        delete_button = QPushButton("Delete")
+        self.app.apply_stylesheet(delete_button, 'small-button.css')
+        delete_button.pressed.connect(self.on_delete_button_clicked) 
+
+        bottom_widget_layout.addStretch(2)
+        bottom_widget_layout.addWidget(amt_input, 1)
+        bottom_widget_layout.addWidget(delete_button, 1)
+        bottom_widget_layout.addStretch(2)
+        bottom_widget.setLayout(bottom_widget_layout)
+
+        layout.addWidget(preview_label, 5)
+        layout.addWidget(bottom_widget, 1)
+        self.setLayout(layout)
+
+    def on_delete_button_clicked(self):
+        self.deleteRequested.emit(self.file_name)
+
+    def on_amount_edited(self, new_text):
+        try:
+            new_amount = int(new_text)
+            self.amountEdited.emit(self.file_name, new_amount) 
+        except ValueError:
+            pass
+
+class ImportWidget(WidgetTemplate):
+
+    def __init__(self, app_instance: App):
+        super().__init__(app_instance)
+
+        self.imported_files = [] # format: {filename: str, amount: int}
+
+        self.__init_gui__()
+    
+    def __init_gui__(self):
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        
+        self.__file_preview_widget = WidgetViewer(self.app, 4, 2, []) 
+
+        self.__import_button_wrapper = QWidget()
+        self.__import_button_wrapper_layout = QHBoxLayout()
+
+        self.__import_button = QPushButton()
+        self.update_import_button_text()
+        self.app.apply_stylesheet(self.__import_button, "generic-button.css")
+        self.__import_button.clicked.connect(self.import_files)
+
+        self.__import_button_wrapper_layout.addStretch(2)
+        self.__import_button_wrapper_layout.addWidget(self.__import_button, 1)
+        self.__import_button_wrapper_layout.addStretch(2)
+        self.__import_button_wrapper.setLayout(self.__import_button_wrapper_layout)
+
+        main_layout.addWidget(self.__file_preview_widget, 6)
+        main_layout.addWidget(self.__import_button_wrapper, 1)
+        main_widget.setLayout(main_layout)
+
+        self.app.apply_stylesheet(main_widget, "light.css")
+
+        self.__init_template_gui__("Import Part Files", main_widget)
+
+    def get_total_part_amount(self) -> int:
+        total = 0
+        for file in self.imported_files:
+            try:
+                total += file['amount']
+            except Exception:
+                continue
+        return total
+
+    def import_files(self): 
+
+        if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+            return
+
+        IMPORT_LIMIT = 10 # max files at a time
+        
+        file_paths, _ = QFileDialog.getOpenFileNames(self, "Select File", "", "STL Files (*.stl)")
+
+        widgets = []
+
+        imported = 0
+
+        for path in file_paths:
+
+            if imported >= IMPORT_LIMIT:
+                break
+            if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+                break
+                
+            file_name = os.path.basename(path)
+
+            duplicate = False
+
+            for file in self.imported_files: # checks for duplicate files already imported
+                if file["filename"] == file_name:
+                    duplicate = True
+
+            if duplicate: 
+                continue
+
+            try:
+                parser = STLParser(path, CAD_PREVIEW_DATA_PATH)
+                parser.save_preview_image()
+                outer_contour = parser.outer_contour
+                png_location = parser.preview_path
+
+                preview_widget = STLFileWidget(self.app, file_name, png_location)
+                preview_widget.deleteRequested.connect(self.on_widget_delete_request)
+                preview_widget.amountEdited.connect(self.on_widget_amt_edited)
+                widgets.append(preview_widget)
+
+                self.add_file_to_list(file_name, outer_contour, 1) # widget stored in fileviewer
+            except Exception as e:
+                continue
+
+            imported += 1
+
+        self.__file_preview_widget.append_widgets(widgets)
+        self.update_import_button_text()
+
+    def add_file_to_list(self, filename: str, outer_contour: list, amount: int = 1):
+        new_entry = {
+            "filename": filename, 
+            "amount": amount, 
+            "outer_contour": outer_contour}
+        self.imported_files.append(new_entry)
+
+    def update_import_button_text(self):
+        if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+            self.app.apply_stylesheet(self.__import_button, "generic-button-red.css")
+        else:
+            self.app.apply_stylesheet(self.__import_button, "generic-button.css")
+        self.__import_button.setText(f"Import Parts ({self.get_total_part_amount()}/{self.app.PART_IMPORT_LIMIT})")
+
+    def _find_idx_of_filename(self, filename: str):
+        for idx, dict in enumerate(self.imported_files):
+            if dict['filename'] == filename: 
+                return idx
+        return -1
+
+    def on_widget_amt_edited(self, filename: str, value: int): 
+        index = self._find_idx_of_filename(filename)
+        self.imported_files[index]['amount'] = value
+        self.update_import_button_text()
+
+    def on_widget_delete_request(self, filename: str):
+        index = self._find_idx_of_filename(filename)
+        self.imported_files.pop(index)
+        self.__file_preview_widget.pop_widget(index)
+        self.update_import_button_text()
+
+class RouterDataWidget(QStackedWidget): 
+
+    routerDeleted = pyqtSignal() # for updating button amount text
+
+    def __init__(self, app_instance: App, router_util: RouterUtil, router_names: list, router_data: list):
+
+        if len(router_names) != len(router_data):
+            raise ValueError("All routers must have a filename and datasheet")
+
+        for router in router_names:
+            if type(router) != str:
+                raise ValueError("Router names must be in str format")
+
+        for router in router_data:
+            if type(router) != dict:
+                raise ValueError("Router data must be in dict format")
+            
+        super().__init__()
+
+        self.app = app_instance
+        self.router_util = router_util
+
+        self.curr_tab = 0
+        self.router_names = router_names # names not stored in json to avoid special cases
+        self.router_data = router_data
+
+        self.preview_paths = []
+        self.__init_previews__()
+
+        self.update_view()
+    
+    def __init_previews__(self):
+        for i, router_data in enumerate(self.router_data):
+            self.preview_paths.append(self.get_router_preview(i, router_data))
+
+    def get_router_preview(self, router_idx: int, router_data: dict):
+        png_path = self.router_util.get_router_preview(ROUTER_PREVIEW_DATA_PATH, router_data, router_idx)
+        return png_path
+
+    def update_current_router_preview(self):
+        png_path = self.get_router_preview(self.curr_tab, self.router_data[self.curr_tab])
+        self.preview_paths[self.curr_tab] = png_path
+        self.update_view()
+
+    def update_view(self):
+
+        for i in reversed(range(self.count())):
+            widget = self.widget(i)
+            self.removeWidget(widget)
+
+        for i in range(self._get_max_tab_idx()+1):
+            widget = self.get_tab(i)
+            self.addWidget(widget)
+
+        self.setCurrentIndex(self.curr_tab)
+
+    def add_new_router(self): 
+        next_router_name = self.router_util.get_next_router_filename(self.app.router_names)
+        self.router_names.append(next_router_name) 
+        self.router_data.append(self.router_util.default_router)
+        router_idx, router_data = len(self.router_names)-1, self.router_data[-1]
+        self.preview_paths.append(self.get_router_preview(router_idx, router_data))
+        self.update_view()
+
+    def pop_router(self):
+        try: 
+            self.router_names.pop(self.curr_tab)
+            self.router_data.pop(self.curr_tab)
+            self.preview_paths.pop(self.curr_tab)
+            if self.curr_tab != 0:
+                self.curr_tab -= 1
+            self.routerDeleted.emit()
+            self.update_view()
+        except Exception: # Avoids IndexError due to lag
+            return
+        
+    def change_router_name(self, text: str):
+        self.router_data[self.curr_tab]['name'] = text
+
+    def _get_max_tab_idx(self):
+        return 0 if len(self.router_data) == 0 else len(self.router_data)-1
+    
+    def prev_tab(self):
+        if self.curr_tab > 0:
+            self.curr_tab -= 1
+        self.update_view()
+
+    def next_tab(self):
+        if self.curr_tab < self._get_max_tab_idx():
+            self.curr_tab += 1
+        self.update_view()
+
+    def get_tab(self, tab_idx: int) -> QWidget: # gets router data widget
+        if tab_idx < 0 or tab_idx > self._get_max_tab_idx():
+            return
+
+        main_widget = QWidget()
+        main_widget.setMinimumHeight(int(self.app.MIN_HEIGHT*.8))
+        main_layout = QHBoxLayout() # includes arrows
+
+        data_widget = QWidget()
+        data_layout = QVBoxLayout()
+
+        if len(self.router_names) == 0: # no routers
+            main_widget.setLayout(main_layout)
+            return main_widget
+
+        curr_router_filename = os.path.splitext(self.router_names[tab_idx])[0]
+        curr_router_data = self.router_data[tab_idx]
+
+        router_name_widget = QLineEdit()
+        router_name_widget.setText(curr_router_data['name'])
+        self.app.apply_stylesheet(router_name_widget, "router-title-input-box.css")
+        router_name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        router_name_widget.editingFinished.connect(lambda box=router_name_widget: self.change_router_name(box.text()))
+
+        data_layout.addWidget(router_name_widget)
+
+        for key in list(curr_router_data.keys())[1:]:
+            data_row_widget = QWidget()
+            data_row_layout = QHBoxLayout()
+
+            key_label = QLabel()
+            key_text = self._edit_key_text(key)
+            key_label.setText(key_text)
+            self.app.apply_stylesheet(key_label, "generic-text.css")
+
+            value_box = QLineEdit()
+            value_box.setText(str(curr_router_data[key]))
+            value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
+            min_value, max_value = self.router_util.value_ranges[key]
+            value_box.setPlaceholderText(f"{min_value}-{max_value}")
+            self.app.apply_stylesheet(value_box, "small-input-box.css")
+
+            data_row_layout.addWidget(key_label, 3)
+            data_row_layout.addWidget(value_box, 1)
+            data_row_widget.setLayout(data_row_layout)
+            data_layout.addWidget(data_row_widget)
+        
+        delete_button_container = QWidget()
+        delete_button_container_layout = QHBoxLayout()
+
+        delete_button = QPushButton("Delete")
+        self.app.apply_stylesheet(delete_button, "generic-button.css")
+        delete_button.pressed.connect(self.pop_router)
+
+        delete_button_container_layout.addStretch(1)
+        delete_button_container_layout.addWidget(delete_button, 1)
+        delete_button_container_layout.addStretch(1)
+        delete_button_container.setLayout(delete_button_container_layout)
+
+        data_layout.addWidget(delete_button_container)
+        data_widget.setLayout(data_layout)
+
+        router_preview_widget = QLabel()
+        png_path = self.preview_paths[self.curr_tab]
+        pixmap = QPixmap(png_path)
+        router_preview_widget.setPixmap(pixmap)
+        router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        if tab_idx > 0:
+            left_arrow = ArrowButton(self.app, False)
+            left_arrow.pressed.connect(self.prev_tab)
+            main_layout.addWidget(left_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        main_layout.addWidget(data_widget, 10)
+        main_layout.addWidget(router_preview_widget, 8)
+
+        if tab_idx < self._get_max_tab_idx():
+            right_arrow = ArrowButton(self.app, True)
+            right_arrow.pressed.connect(self.next_tab)
+            main_layout.addWidget(right_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        main_widget.setLayout(main_layout)
+
+        return main_widget
+    
+    def _edit_key_text(self, str: str):
+        words = str.split("_")
+        for i, word in enumerate(words):
+            words[i] = word.capitalize()     
+        return " ".join(words)
+    
+    def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
+        if string == str(self.router_data[self.curr_tab][key_edited]):
+            return
+        min, max = self.router_util.value_ranges[key_edited]
+        value = parse_text(string, min, max)
+        if value is not None:
+            box.setText(str(value))
+            self.router_data[self.curr_tab][key_edited] = value
+            self.update_current_router_preview()
+
+class RouterWidget(WidgetTemplate):
+
+    def __init__(self, app_instance: App):
+        super().__init__(app_instance)
+
+        self.router_util = RouterUtil()
+
+        self.__init_gui__()
+
+    def __init_gui__(self):
+
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+
+        self.__router_data_widget = RouterDataWidget(self.app, self.router_util, self.app.router_names, self.app.router_data)
+        self.__router_data_widget.routerDeleted.connect(self.update_add_button_text)
+
+        self.__add_new_button_wrapper = QWidget()
+        self.__add_new_button_wrapper_layout = QHBoxLayout()
+
+        self.__add_new_button = QPushButton()
+        self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        self.__add_new_button.clicked.connect(self.add_new_router)
+
+        self.__add_new_button_wrapper_layout.addStretch(2)
+        self.__add_new_button_wrapper_layout.addWidget(self.__add_new_button, 1)
+        self.__add_new_button_wrapper_layout.addStretch(2)
+        self.__add_new_button_wrapper.setLayout(self.__add_new_button_wrapper_layout)
+
+        main_layout.addWidget(self.__router_data_widget, 6)
+        main_layout.addWidget(self.__add_new_button_wrapper, 1)
+        main_widget.setLayout(main_layout)
+
+        self.app.apply_stylesheet(main_widget, "light.css")
+
+        self.__init_template_gui__("Configure CNC Router", main_widget)
+        self.update_add_button_text()
+
+    def add_new_router(self):
+        if self.get_router_amount() < self.app.ROUTER_LIMIT:
+            self.__router_data_widget.add_new_router()
+            self.update_add_button_text()
+
+    def get_router_amount(self) -> int:
+        return(len(self.app.router_names))
+
+    def update_add_button_text(self):
+        if self.get_router_amount() >= self.app.ROUTER_LIMIT:
+            self.app.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+        else:
+            self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        self.__add_new_button.setText(f"Add New ({self.get_router_amount()}/{self.app.ROUTER_LIMIT})")
+
+if __name__ == '__main__':
+    app = App(sys.argv)
+    main_window = MainWindow(app)
+    main_window.show()
     sys.exit(app.exec())
