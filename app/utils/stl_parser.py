@@ -40,6 +40,7 @@ class STLParser: # convertes stl to polygon
             raise ValueError(f"STL file {self.stl_filepath} must be in vector format")
         
         self.flat_axis = self.determine_axis_to_flatten()
+        self.thickness = self.get_thickness()
         self.flattened_mesh = self.flatten_stl()
         self.outer_edges = self.get_outer_edges(self.flat_axis)
         self.contours = self.get_contours()
@@ -62,10 +63,17 @@ class STLParser: # convertes stl to polygon
                 return False
         return True
 
-    def determine_axis_to_flatten(self, tolerance: int = MIN_VALUE_DECIMAL_DIGITS) -> int: 
+    def determine_axis_to_flatten(self, tolerance: int = MIN_VALUE_DECIMAL_DIGITS) -> tuple: # returns thickness and axis to flatten
         coordinates = np.round([self.stl_mesh_vector_format[:, :, i] for i in range(3)], tolerance) # get all rounded coordinate arrays
         unique_counts = [np.unique(coordinates[i]).size for i in range(3)] # get length of arrays
-        return np.argmin(unique_counts)
+        flat_axis = np.argmin(unique_counts)
+        return flat_axis
+
+    def get_thickness(self, tolerance: int = MIN_VALUE_DECIMAL_DIGITS) -> float:
+        flat_axis_coordinates = np.round(self.stl_mesh_vector_format[:, :, self.flat_axis], tolerance)
+        unique_points = np.unique(flat_axis_coordinates)
+        thickness = max(unique_points)-min(unique_points)
+        return thickness
 
     def flatten_stl(self, axis: int = 2, tolerance: float = MIN_QUANTIZED_VALUE) -> np.array: # returns all facets completely on flattened plane
         if axis not in range(3):
@@ -97,7 +105,7 @@ class STLParser: # convertes stl to polygon
         outer_edges = [edge for edge, count in edge_counts.items() if count == 1] # all outer edges only appear in one facet
         return outer_edges
 
-    def save_preview_image(self, scale_factor: float = 1, figsize: tuple = (4.5, 3.75), dpi: int = 80): # scalefactor necessary for metric/imperial mode display
+    def save_preview_image(self, scale_factor: float = 1, figsize: tuple = (3.9, 3.75), dpi: int = 80): # scalefactor necessary for metric/imperial mode display
 
         if not self.preview_path: # testing run
             return
@@ -113,6 +121,8 @@ class STLParser: # convertes stl to polygon
                 x_values = tuple([x * scale_factor for x in x_values])
                 y_values = tuple([y * scale_factor for y in y_values])
             plt.plot(x_values, y_values, color=self.plot_color)
+
+        plt.xlabel('Z: ' + str(self.thickness) + ' mm', fontsize=10, labelpad=5, horizontalalignment='center')
 
         plt.grid(True)
         plt.gca().set_facecolor(self.bg_color) # bg color

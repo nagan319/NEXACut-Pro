@@ -13,6 +13,7 @@ from filepaths import * # paths to data folders
 
 from utils.stl_parser import STLParser
 from utils.router_util import RouterUtil
+from utils.value_conversion import parse_text
 
 # (almost) all file io is handled in app class, methods are called by widget classes
 # one exception is matplotlib-related image saving which is handled by util classes with dst passed in 
@@ -91,6 +92,7 @@ class App(QApplication):
     def clear_temporary_data(self):
         self.clear_folder_contents(CAD_PREVIEW_DATA_PATH)
         self.clear_folder_contents(IMAGE_PREVIEW_DATA_PATH)
+        self.clear_folder_contents(ROUTER_PREVIEW_DATA_PATH)
         self.save_router_data()
 
     def __close_app(self):
@@ -609,9 +611,9 @@ class ImportWidget(WidgetTemplate):
         self.__file_preview_widget.pop_widget(index)
         self.update_import_button_text()
 
-class RouterDataWidget(QStackedWidget): # similar to grid view widget but methods vary
+class RouterDataWidget(QStackedWidget): 
 
-    routerDeleted = pyqtSignal()
+    routerDeleted = pyqtSignal() # for updating button amount text
 
     def __init__(self, app_instance: App, router_util: RouterUtil, router_names: list, router_data: list):
 
@@ -635,8 +637,24 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         self.router_names = router_names # names not stored in json to avoid special cases
         self.router_data = router_data
 
+        self.preview_paths = []
+        self.__init_previews__()
+
         self.update_view()
     
+    def __init_previews__(self):
+        for i, router_data in enumerate(self.router_data):
+            self.preview_paths.append(self.get_router_preview(i, router_data))
+
+    def get_router_preview(self, router_idx: int, router_data: dict):
+        png_path = self.router_util.get_router_preview(ROUTER_PREVIEW_DATA_PATH, router_data, router_idx)
+        return png_path
+
+    def update_current_router_preview(self):
+        png_path = self.get_router_preview(self.curr_tab, self.router_data[self.curr_tab])
+        self.preview_paths[self.curr_tab] = png_path
+        self.update_view()
+
     def update_view(self):
 
         for i in reversed(range(self.count())):
@@ -653,12 +671,17 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         next_router_name = self.router_util.get_next_router_filename(self.app.router_names)
         self.router_names.append(next_router_name) 
         self.router_data.append(self.router_util.default_router)
+        router_idx, router_data = len(self.router_names)-1, self.router_data[-1]
+        self.preview_paths.append(self.get_router_preview(router_idx, router_data))
         self.update_view()
 
     def pop_router(self):
         try: 
             self.router_names.pop(self.curr_tab)
             self.router_data.pop(self.curr_tab)
+            self.preview_paths.pop(self.curr_tab)
+            if self.curr_tab != 0:
+                self.curr_tab -= 1
             self.routerDeleted.emit()
             self.update_view()
         except Exception: # Avoids IndexError due to lag
@@ -702,7 +725,7 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         router_name_widget.setText(curr_router_data['name'])
         self.app.apply_stylesheet(router_name_widget, "router-title-input-box.css")
         router_name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        router_name_widget.textEdited.connect(self.change_router_name)
+        router_name_widget.editingFinished.connect(lambda box=router_name_widget: self.change_router_name(box.text()))
 
         data_layout.addWidget(router_name_widget)
 
@@ -717,11 +740,12 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
 
             value_box = QLineEdit()
             value_box.setText(str(curr_router_data[key]))
+            value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
             min_value, max_value = self.router_util.value_ranges[key]
             value_box.setPlaceholderText(f"{min_value}-{max_value}")
             self.app.apply_stylesheet(value_box, "small-input-box.css")
 
-            data_row_layout.addWidget(key_label, 1)
+            data_row_layout.addWidget(key_label, 3)
             data_row_layout.addWidget(value_box, 1)
             data_row_widget.setLayout(data_row_layout)
             data_layout.addWidget(data_row_widget)
@@ -739,8 +763,13 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         delete_button_container.setLayout(delete_button_container_layout)
 
         data_layout.addWidget(delete_button_container)
-
         data_widget.setLayout(data_layout)
+
+        router_preview_widget = QLabel()
+        png_path = self.preview_paths[self.curr_tab]
+        pixmap = QPixmap(png_path)
+        router_preview_widget.setPixmap(pixmap)
+        router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         if tab_idx > 0:
             left_arrow = ArrowButton(self.app, False)
@@ -749,7 +778,8 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         else:
             main_layout.addStretch(1)
 
-        main_layout.addWidget(data_widget, 18)
+        main_layout.addWidget(data_widget, 10)
+        main_layout.addWidget(router_preview_widget, 8)
 
         if tab_idx < self._get_max_tab_idx():
             right_arrow = ArrowButton(self.app, True)
@@ -767,6 +797,16 @@ class RouterDataWidget(QStackedWidget): # similar to grid view widget but method
         for i, word in enumerate(words):
             words[i] = word.capitalize()     
         return " ".join(words)
+    
+    def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
+        if string == str(self.router_data[self.curr_tab][key_edited]):
+            return
+        min, max = self.router_util.value_ranges[key_edited]
+        value = parse_text(string, min, max)
+        if value is not None:
+            box.setText(str(value))
+            self.router_data[self.curr_tab][key_edited] = value
+            self.update_current_router_preview()
 
 class RouterWidget(WidgetTemplate):
 
