@@ -1,0 +1,14 @@
+QPushButton {
+    font-family: 'Tajawal';
+    font-size: 20px;
+    text-align: center;
+    background-color: #ffffff;
+    color: #cc0000;
+    padding: 10px;
+    border: 1px solid #cc0000;
+    border-radius: 0px; 
+}
+
+QPushButton:hover {
+    background-color: #bbbbbb; 
+}
