@@ -4,7 +4,11 @@ Title widget:
 Router widget:
 - Make parameter editing actually work (units)
 - make sure preview looks handles bad values well
+- fix adding router while editing name duplication issue
 
 Stock widget:
 - Add selection screen and 'carousel'
 - Include image preview library here
+
+Refactoring:
+- Combine 'router names' and 'router data'

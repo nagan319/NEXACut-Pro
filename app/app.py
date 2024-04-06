@@ -38,64 +38,46 @@ class App(QApplication):
         super().__init__(argv)
         atexit.register(self.__close_app)
 
-        # permanent data
+        # long-term data
         self.user_preferences = self.load_user_preferences()
-
         self.router_data = self.load_router_data()
-        self.router_names = self.load_folder_contents(ROUTER_DATA_FOLDER_PATH)
-
-        self.stock_data = self.load_stock_data()
 
         # temporary data
-        self.imported_part_files = []
+        self.imported_files = []
         
     def load_user_preferences(self) -> dict:
         return self.read_json(USER_PREFERENCE_FILE_PATH)
     
     def save_user_preferences(self):
         self.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
-
-    def get_preference_value(self, key: str): # get value from key in user preferences
-        if key not in self.user_preferences:
-            raise ValueError(f"Key {key} not in user preferences")
-        
-        return self.user_preferences[key]
     
-    def load_router_data(self): # loads data from all routers in folder (allows for easier modification)
+    def load_router_data(self): 
 
-        router_info = []
+        router_data = []
 
         all_routers = self.load_folder_contents(ROUTER_DATA_FOLDER_PATH)
 
         for router in all_routers:
             router_path = os.path.join(ROUTER_DATA_FOLDER_PATH, router)
-            router_info.append(self.read_json(router_path))
+            router_data.append(self.read_json(router_path))
 
-        return router_info
+        return router_data
     
-    def save_router_data(self): # saves modified router data
+    def save_router_data(self): 
         
         self.clear_folder_contents(ROUTER_DATA_FOLDER_PATH)
 
-        for i, name in enumerate(self.router_names):
-            filepath = os.path.join(ROUTER_DATA_FOLDER_PATH, name)
+        for i, _ in enumerate(self.router_data):
+            filename = self.router_data[i]['filename']
+            filepath = os.path.join(ROUTER_DATA_FOLDER_PATH, filename)
             self.save_json(filepath, self.router_data[i])
 
-    def load_stock_data(self): # loads data from selected stock folder
-        stock_name = self.get_preference_value('stock')
-
-        if len(stock_name) == 0: 
-            return
-        
-        return
-
     def clear_temporary_data(self):
-        self.clear_folder_contents(CAD_PREVIEW_DATA_PATH)
-        self.clear_folder_contents(IMAGE_PREVIEW_DATA_PATH)
-        self.clear_folder_contents(ROUTER_PREVIEW_DATA_PATH)
-        self.save_router_data()
+        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH, ROUTER_PREVIEW_DATA_PATH]:
+            self.clear_folder_contents(folder)
 
     def __close_app(self):
+        self.save_router_data()
         self.save_user_preferences()
         self.clear_temporary_data()
 
@@ -310,7 +292,7 @@ class WidgetViewer(QStackedWidget): # image viewing 'carousel' (basically grid v
     MAX_WIDGETS_X = 4
     MAX_WIDGETS_Y = 2
 
-    def __init__(self, app_instance: App, widgets_x: int, widgets_y: int,  widgets: list): # amount of objects in view 
+    def __init__(self, app_instance: App, widgets_x: int, widgets_y: int,  widgets: list = []): # amount of objects in view 
 
         self.allowed_types = [QWidget, STLFileWidget] 
 
@@ -373,16 +355,39 @@ class WidgetViewer(QStackedWidget): # image viewing 'carousel' (basically grid v
         self.update_view()
 
     def get_tab(self, tab_idx: int) -> QWidget:
+
         if tab_idx < 0 or tab_idx > self._get_max_tab_idx():
             return
-        
-        # limits for which widgets are going to be shown
+
         min_widget_idx = tab_idx * self.widgets_x * self.widgets_y
-        full_max_idx = (tab_idx+1) * self.widgets_x * self.widgets_y # if view is full
-        max_widget_idx = full_max_idx if full_max_idx < len(self.widgets) else len(self.widgets) - 1
+        all_slots_used_max_idx = (tab_idx+1) * self.widgets_x * self.widgets_y 
+        max_widget_idx = all_slots_used_max_idx if all_slots_used_max_idx < len(self.widgets) else len(self.widgets) - 1
 
         main_widget = QWidget()
         main_layout = QHBoxLayout() # includes left/right arrow keys if relevant, applied to 'self'
+
+        if tab_idx > 0:
+            left_arrow = ArrowButton(self.app, False)
+            left_arrow.pressed.connect(self.prev_tab)
+            main_layout.addWidget(left_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        view_widget = self._get_tab_central_widget(min_widget_idx, max_widget_idx)
+        main_layout.addWidget(view_widget, 18)
+
+        if tab_idx < self._get_max_tab_idx():
+            right_arrow = ArrowButton(self.app, True)
+            right_arrow.pressed.connect(self.next_tab)
+            main_layout.addWidget(right_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        main_widget.setLayout(main_layout)
+
+        return main_widget
+
+    def _get_tab_central_widget(self, min_widget_idx: int, max_widget_idx: int) -> QWidget:
 
         view_widget = QWidget()
         view_layout = QVBoxLayout()
@@ -410,25 +415,7 @@ class WidgetViewer(QStackedWidget): # image viewing 'carousel' (basically grid v
         
         view_widget.setLayout(view_layout)
 
-        if tab_idx > 0:
-            left_arrow = ArrowButton(self.app, False)
-            left_arrow.pressed.connect(self.prev_tab)
-            main_layout.addWidget(left_arrow, 1)
-        else:
-            main_layout.addStretch(1)
-
-        main_layout.addWidget(view_widget, 18)
-
-        if tab_idx < self._get_max_tab_idx():
-            right_arrow = ArrowButton(self.app, True)
-            right_arrow.pressed.connect(self.next_tab)
-            main_layout.addWidget(right_arrow, 1)
-        else:
-            main_layout.addStretch(1)
-
-        main_widget.setLayout(main_layout)
-
-        return main_widget
+        return view_widget
 
 class STLFileWidget(QWidget): 
     
@@ -445,12 +432,18 @@ class STLFileWidget(QWidget):
 
         layout = QVBoxLayout()
 
-        preview_label = QLabel()
-        preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview_widget = QLabel()
+        preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview_image = QPixmap(self.png_location)
+        preview_widget.setPixmap(preview_image)
 
-        pixmap = QPixmap(self.png_location)
-        preview_label.setPixmap(pixmap)
+        bottom_widget = self._get_bottom_widget()
 
+        layout.addWidget(preview_widget, 5)
+        layout.addWidget(bottom_widget, 1)
+        self.setLayout(layout)
+
+    def _get_bottom_widget(self) -> QWidget:
         bottom_widget = QWidget()
         bottom_widget_layout = QHBoxLayout()
 
@@ -469,10 +462,7 @@ class STLFileWidget(QWidget):
         bottom_widget_layout.addWidget(delete_button, 1)
         bottom_widget_layout.addStretch(2)
         bottom_widget.setLayout(bottom_widget_layout)
-
-        layout.addWidget(preview_label, 5)
-        layout.addWidget(bottom_widget, 1)
-        self.setLayout(layout)
+        return bottom_widget
 
     def on_delete_button_clicked(self):
         self.deleteRequested.emit(self.file_name)
@@ -488,24 +478,21 @@ class ImportWidget(WidgetTemplate):
 
     def __init__(self, app_instance: App):
         super().__init__(app_instance)
-
-        self.imported_files = [] # format: {filename: str, amount: int}
-
         self.__init_gui__()
     
     def __init_gui__(self):
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
-        self.__file_preview_widget = WidgetViewer(self.app, 4, 2, []) 
+        self.__file_preview_widget = WidgetViewer(self.app, 4, 2) 
 
         self.__import_button_wrapper = QWidget()
         self.__import_button_wrapper_layout = QHBoxLayout()
 
         self.__import_button = QPushButton()
-        self.update_import_button_text()
         self.app.apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.clicked.connect(self.import_files)
+        self.update_import_button_text()
 
         self.__import_button_wrapper_layout.addStretch(2)
         self.__import_button_wrapper_layout.addWidget(self.__import_button, 1)
@@ -520,21 +507,34 @@ class ImportWidget(WidgetTemplate):
 
         self.__init_template_gui__("Import Part Files", main_widget)
 
-    def get_total_part_amount(self) -> int:
+    def _get_total_part_amount(self) -> int:
         total = 0
-        for file in self.imported_files:
+        for file in self.app.imported_files:
             try:
                 total += file['amount']
             except Exception:
                 continue
         return total
+    
+    def _get_idx_of_filename(self, filename: str):
+        for idx, dict in enumerate(self.app.imported_files):
+            if dict['filename'] == filename: 
+                return idx
+        return -1
+    
+    def _save_file_to_data(self, filename: str, outer_contour: list, amount: int = 1):
+        new_entry = {
+            "filename": filename, 
+            "amount": amount, 
+            "outer_contour": outer_contour}
+        self.app.imported_files.append(new_entry)
 
     def import_files(self): 
 
-        if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+        if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
             return
 
-        IMPORT_LIMIT = 10 # max files at a time
+        IMPORT_LIMIT = 10 
         
         file_paths, _ = QFileDialog.getOpenFileNames(self, "Select File", "", "STL Files (*.stl)")
 
@@ -546,14 +546,14 @@ class ImportWidget(WidgetTemplate):
 
             if imported >= IMPORT_LIMIT:
                 break
-            if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+            if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
                 break
                 
             file_name = os.path.basename(path)
 
             duplicate = False
 
-            for file in self.imported_files: # checks for duplicate files already imported
+            for file in self.app.imported_files:
                 if file["filename"] == file_name:
                     duplicate = True
 
@@ -571,7 +571,8 @@ class ImportWidget(WidgetTemplate):
                 preview_widget.amountEdited.connect(self.on_widget_amt_edited)
                 widgets.append(preview_widget)
 
-                self.add_file_to_list(file_name, outer_contour, 1) # widget stored in fileviewer
+                self._save_file_to_data(file_name, outer_contour, 1) 
+
             except Exception as e:
                 continue
 
@@ -580,53 +581,29 @@ class ImportWidget(WidgetTemplate):
         self.__file_preview_widget.append_widgets(widgets)
         self.update_import_button_text()
 
-    def add_file_to_list(self, filename: str, outer_contour: list, amount: int = 1):
-        new_entry = {
-            "filename": filename, 
-            "amount": amount, 
-            "outer_contour": outer_contour}
-        self.imported_files.append(new_entry)
-
     def update_import_button_text(self):
-        if self.get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+        if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
             self.app.apply_stylesheet(self.__import_button, "generic-button-red.css")
         else:
             self.app.apply_stylesheet(self.__import_button, "generic-button.css")
-        self.__import_button.setText(f"Import Parts ({self.get_total_part_amount()}/{self.app.PART_IMPORT_LIMIT})")
-
-    def _find_idx_of_filename(self, filename: str):
-        for idx, dict in enumerate(self.imported_files):
-            if dict['filename'] == filename: 
-                return idx
-        return -1
+        self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.app.PART_IMPORT_LIMIT})")
 
     def on_widget_amt_edited(self, filename: str, value: int): 
-        index = self._find_idx_of_filename(filename)
-        self.imported_files[index]['amount'] = value
+        index = self._get_idx_of_filename(filename)
+        self.app.imported_files[index]['amount'] = value
         self.update_import_button_text()
 
     def on_widget_delete_request(self, filename: str):
-        index = self._find_idx_of_filename(filename)
-        self.imported_files.pop(index)
+        index = self._get_idx_of_filename(filename)
+        self.app.imported_files.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_import_button_text()
 
 class RouterDataWidget(QStackedWidget): 
 
-    routerDeleted = pyqtSignal() # for updating button amount text
+    routerDeleted = pyqtSignal() 
 
-    def __init__(self, app_instance: App, router_util: RouterUtil, router_names: list, router_data: list):
-
-        if len(router_names) != len(router_data):
-            raise ValueError("All routers must have a filename and datasheet")
-
-        for router in router_names:
-            if type(router) != str:
-                raise ValueError("Router names must be in str format")
-
-        for router in router_data:
-            if type(router) != dict:
-                raise ValueError("Router data must be in dict format")
+    def __init__(self, app_instance: App, router_util: RouterUtil):
             
         super().__init__()
 
@@ -634,25 +611,18 @@ class RouterDataWidget(QStackedWidget):
         self.router_util = router_util
 
         self.curr_tab = 0
-        self.router_names = router_names # names not stored in json to avoid special cases
-        self.router_data = router_data
 
-        self.preview_paths = []
         self.__init_previews__()
 
         self.update_view()
     
     def __init_previews__(self):
-        for i, router_data in enumerate(self.router_data):
-            self.preview_paths.append(self.get_router_preview(i, router_data))
-
-    def get_router_preview(self, router_idx: int, router_data: dict):
-        png_path = self.router_util.get_router_preview(ROUTER_PREVIEW_DATA_PATH, router_data, router_idx)
-        return png_path
+        for router_data in self.app.router_data:
+            self.router_util.get_router_preview(router_data)
 
     def update_current_router_preview(self):
-        png_path = self.get_router_preview(self.curr_tab, self.router_data[self.curr_tab])
-        self.preview_paths[self.curr_tab] = png_path
+        curr_router_data = self.app.router_data[self.curr_tab]
+        self.router_util.get_router_preview(curr_router_data)
         self.update_view()
 
     def update_view(self):
@@ -668,30 +638,29 @@ class RouterDataWidget(QStackedWidget):
         self.setCurrentIndex(self.curr_tab)
 
     def add_new_router(self): 
-        next_router_name = self.router_util.get_next_router_filename(self.app.router_names)
-        self.router_names.append(next_router_name) 
-        self.router_data.append(self.router_util.default_router)
-        router_idx, router_data = len(self.router_names)-1, self.router_data[-1]
-        self.preview_paths.append(self.get_router_preview(router_idx, router_data))
+        new_router_data = self.router_util.get_new_router(self.app.router_data)
+        self.app.router_data.append(new_router_data) 
+        self.router_util.get_router_preview(new_router_data)
         self.update_view()
 
     def pop_router(self):
         try: 
-            self.router_names.pop(self.curr_tab)
-            self.router_data.pop(self.curr_tab)
-            self.preview_paths.pop(self.curr_tab)
+            self.app.router_data.pop(self.curr_tab)
+
             if self.curr_tab != 0:
                 self.curr_tab -= 1
+
             self.routerDeleted.emit()
             self.update_view()
+
         except Exception: # Avoids IndexError due to lag
             return
         
     def change_router_name(self, text: str):
-        self.router_data[self.curr_tab]['name'] = text
+        self.app.router_data[self.curr_tab]['name'] = text
 
     def _get_max_tab_idx(self):
-        return 0 if len(self.router_data) == 0 else len(self.router_data)-1
+        return 0 if len(self.app.router_data) == 0 else len(self.app.router_data)-1
     
     def prev_tab(self):
         if self.curr_tab > 0:
@@ -703,7 +672,8 @@ class RouterDataWidget(QStackedWidget):
             self.curr_tab += 1
         self.update_view()
 
-    def get_tab(self, tab_idx: int) -> QWidget: # gets router data widget
+    def get_tab(self, tab_idx: int) -> QWidget: 
+
         if tab_idx < 0 or tab_idx > self._get_max_tab_idx():
             return
 
@@ -711,15 +681,45 @@ class RouterDataWidget(QStackedWidget):
         main_widget.setMinimumHeight(int(self.app.MIN_HEIGHT*.8))
         main_layout = QHBoxLayout() # includes arrows
 
-        data_widget = QWidget()
-        data_layout = QVBoxLayout()
-
-        if len(self.router_names) == 0: # no routers
+        if len(self.app.router_data) == 0: 
             main_widget.setLayout(main_layout)
             return main_widget
 
-        curr_router_filename = os.path.splitext(self.router_names[tab_idx])[0]
-        curr_router_data = self.router_data[tab_idx]
+        if tab_idx > 0:
+            left_arrow = ArrowButton(self.app, False)
+            left_arrow.pressed.connect(self.prev_tab)
+            main_layout.addWidget(left_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        data_widget = self._get_data_widget(tab_idx)
+
+        router_preview_widget = QLabel()
+        png_path = self.app.router_data[self.curr_tab]['preview_path']
+        pixmap = QPixmap(png_path)
+        router_preview_widget.setPixmap(pixmap)
+        router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        main_layout.addWidget(data_widget, 10)
+        main_layout.addWidget(router_preview_widget, 8)
+
+        if tab_idx < self._get_max_tab_idx():
+            right_arrow = ArrowButton(self.app, True)
+            right_arrow.pressed.connect(self.next_tab)
+            main_layout.addWidget(right_arrow, 1)
+        else:
+            main_layout.addStretch(1)
+
+        main_widget.setLayout(main_layout)
+
+        return main_widget
+    
+    def _get_data_widget(self, tab_idx: int) -> QWidget:
+
+        data_widget = QWidget()
+        data_layout = QVBoxLayout()
+
+        curr_router_data = self.app.router_data[tab_idx]
 
         router_name_widget = QLineEdit()
         router_name_widget.setText(curr_router_data['name'])
@@ -729,25 +729,10 @@ class RouterDataWidget(QStackedWidget):
 
         data_layout.addWidget(router_name_widget)
 
-        for key in list(curr_router_data.keys())[1:]:
-            data_row_widget = QWidget()
-            data_row_layout = QHBoxLayout()
+        key_list = self.router_util.editable_key_list
 
-            key_label = QLabel()
-            key_text = self._edit_key_text(key)
-            key_label.setText(key_text)
-            self.app.apply_stylesheet(key_label, "generic-text.css")
-
-            value_box = QLineEdit()
-            value_box.setText(str(curr_router_data[key]))
-            value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
-            min_value, max_value = self.router_util.value_ranges[key]
-            value_box.setPlaceholderText(f"{min_value}-{max_value}")
-            self.app.apply_stylesheet(value_box, "small-input-box.css")
-
-            data_row_layout.addWidget(key_label, 3)
-            data_row_layout.addWidget(value_box, 1)
-            data_row_widget.setLayout(data_row_layout)
+        for key in key_list:
+            data_row_widget = self._get_data_row_widget(key, curr_router_data[key])
             data_layout.addWidget(data_row_widget)
         
         delete_button_container = QWidget()
@@ -764,34 +749,32 @@ class RouterDataWidget(QStackedWidget):
 
         data_layout.addWidget(delete_button_container)
         data_widget.setLayout(data_layout)
+        
+        return data_widget
 
-        router_preview_widget = QLabel()
-        png_path = self.preview_paths[self.curr_tab]
-        pixmap = QPixmap(png_path)
-        router_preview_widget.setPixmap(pixmap)
-        router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    def _get_data_row_widget(self, key: str, value: float) -> QWidget:
 
-        if tab_idx > 0:
-            left_arrow = ArrowButton(self.app, False)
-            left_arrow.pressed.connect(self.prev_tab)
-            main_layout.addWidget(left_arrow, 1)
-        else:
-            main_layout.addStretch(1)
+        data_row_widget = QWidget()
+        data_row_layout = QHBoxLayout()
 
-        main_layout.addWidget(data_widget, 10)
-        main_layout.addWidget(router_preview_widget, 8)
+        key_label = QLabel()
+        key_text = self._edit_key_text(key)
+        key_label.setText(key_text)
+        self.app.apply_stylesheet(key_label, "generic-text.css")
 
-        if tab_idx < self._get_max_tab_idx():
-            right_arrow = ArrowButton(self.app, True)
-            right_arrow.pressed.connect(self.next_tab)
-            main_layout.addWidget(right_arrow, 1)
-        else:
-            main_layout.addStretch(1)
+        value_box = QLineEdit()
+        value_box.setText(str(value))
+        value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
+        min_value, max_value = self.router_util.value_ranges[key]
+        value_box.setPlaceholderText(f"{min_value}-{max_value}")
+        self.app.apply_stylesheet(value_box, "small-input-box.css")
 
-        main_widget.setLayout(main_layout)
+        data_row_layout.addWidget(key_label, 3)
+        data_row_layout.addWidget(value_box, 1)
+        data_row_widget.setLayout(data_row_layout)
 
-        return main_widget
-    
+        return data_row_widget
+
     def _edit_key_text(self, str: str):
         words = str.split("_")
         for i, word in enumerate(words):
@@ -799,13 +782,13 @@ class RouterDataWidget(QStackedWidget):
         return " ".join(words)
     
     def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
-        if string == str(self.router_data[self.curr_tab][key_edited]):
+        if string == str(self.app.router_data[self.curr_tab][key_edited]):
             return
         min, max = self.router_util.value_ranges[key_edited]
         value = parse_text(string, min, max)
         if value is not None:
             box.setText(str(value))
-            self.router_data[self.curr_tab][key_edited] = value
+            self.app.router_data[self.curr_tab][key_edited] = value
             self.update_current_router_preview()
 
 class RouterWidget(WidgetTemplate):
@@ -813,7 +796,7 @@ class RouterWidget(WidgetTemplate):
     def __init__(self, app_instance: App):
         super().__init__(app_instance)
 
-        self.router_util = RouterUtil()
+        self.router_util = RouterUtil(ROUTER_PREVIEW_DATA_PATH)
 
         self.__init_gui__()
 
@@ -822,7 +805,7 @@ class RouterWidget(WidgetTemplate):
         main_widget = QWidget()
         main_layout = QVBoxLayout()
 
-        self.__router_data_widget = RouterDataWidget(self.app, self.router_util, self.app.router_names, self.app.router_data)
+        self.__router_data_widget = RouterDataWidget(self.app, self.router_util)
         self.__router_data_widget.routerDeleted.connect(self.update_add_button_text)
 
         self.__add_new_button_wrapper = QWidget()
@@ -846,20 +829,20 @@ class RouterWidget(WidgetTemplate):
         self.__init_template_gui__("Configure CNC Router", main_widget)
         self.update_add_button_text()
 
-    def add_new_router(self):
-        if self.get_router_amount() < self.app.ROUTER_LIMIT:
-            self.__router_data_widget.add_new_router()
-            self.update_add_button_text()
+    def _get_router_amount(self) -> int:
+        return(len(self.app.router_data))
 
-    def get_router_amount(self) -> int:
-        return(len(self.app.router_names))
+    def add_new_router(self):
+        if self._get_router_amount() < self.app.ROUTER_LIMIT:
+            self.__router_data_widget.add_new_router()
+            self.update_add_button_text() 
 
     def update_add_button_text(self):
-        if self.get_router_amount() >= self.app.ROUTER_LIMIT:
+        if self._get_router_amount() >= self.app.ROUTER_LIMIT:
             self.app.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
         else:
             self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.setText(f"Add New ({self.get_router_amount()}/{self.app.ROUTER_LIMIT})")
+        self.__add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.app.ROUTER_LIMIT})")
 
 if __name__ == '__main__':
     app = App(sys.argv)
