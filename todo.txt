@@ -2,13 +2,11 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Router widget:
-- Make parameter editing actually work (units)
-- make sure preview looks handles bad values well
-- fix adding router while editing name duplication issue
+- Add 'save' button for easier parameter editing
+- fix widget clipping
 
 Stock widget:
 - Add selection screen and 'carousel'
 - Include image preview library here
 
-Refactoring:
-- Combine 'router names' and 'router data'
+
