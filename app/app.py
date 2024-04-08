@@ -74,7 +74,7 @@ class App(QApplication):
             self.save_json(filepath, self.router_data[i])
 
     def clear_temporary_data(self):
-        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH, ROUTER_PREVIEW_DATA_PATH]:
+        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH]:
             self.clear_folder_contents(folder)
 
     def __close_app(self):
@@ -110,6 +110,13 @@ class App(QApplication):
                 filepath = os.path.join(dirpath, filename)
                 os.remove(filepath)
     
+    def delete_file(self, filepath: str):
+
+        if not (os.path.exists(filepath)):
+            return
+        
+        os.remove(filepath)
+
     def copy_file(self, src_path: str, dst_path: str): # copies a to b
 
         if not (os.path.exists(src_path) or os.path.exists(dst_path)):
@@ -604,7 +611,7 @@ class RouterFileWidget(QWidget):
 
         self.app = app_instance
         self.router_util = router_util
-        self.main_data = router_data
+        self.main_data = router_data # reference
         self.temp_data = copy.deepcopy(self.main_data)
 
         layout = QHBoxLayout()
@@ -689,7 +696,6 @@ class RouterFileWidget(QWidget):
 
     def _get_preview_widget(self):
         router_preview_widget = QLabel()
-        self.router_util.get_router_preview(self.temp_data)
         png_path = self.temp_data['preview_path']
         pixmap = QPixmap(png_path)
         router_preview_widget.setPixmap(pixmap)
@@ -742,7 +748,7 @@ class RouterWidget(WidgetTemplate):
         router_widgets = [RouterFileWidget(self.app, self.router_util, router) for router in self.app.router_data]
 
         for widget in router_widgets:
-            widget.deleteRequested.connect(self.on_widget_delete_requested)
+            widget.deleteRequested.connect(self.on_router_delete_requested)
 
         self.__file_preview_widget = WidgetViewer(self.app, 1, 1, router_widgets) 
 
@@ -775,8 +781,10 @@ class RouterWidget(WidgetTemplate):
             new_router_data = self.router_util.get_new_router(self.app.router_data)
             self.app.router_data.append(new_router_data)
             
+            self.router_util.get_router_preview(new_router_data)
+
             new_router_widget = RouterFileWidget(self.app, self.router_util, new_router_data)
-            new_router_widget.deleteRequested.connect(self.on_widget_delete_requested)
+            new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
 
             self.__file_preview_widget.append_widgets([new_router_widget])
             self.update_add_button_text() 
@@ -794,8 +802,9 @@ class RouterWidget(WidgetTemplate):
                 return idx
         return -1
 
-    def on_widget_delete_requested(self, filename: str):
+    def on_router_delete_requested(self, filename: str):
         index = self._get_idx_of_filename(filename)
+        self.app.delete_file(self.app.router_data[index]['preview_path'])
         self.app.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
