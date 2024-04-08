@@ -3,6 +3,7 @@ import os
 import shutil
 import json
 import atexit
+import copy
 import math
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -23,7 +24,7 @@ class App(QApplication):
     ROUTER_LIMIT = 10
 
     MIN_WIDTH = 1200
-    MIN_HEIGHT = 900
+    MIN_HEIGHT = 1000
     APP_TITLE = 'NEXACut Pro'
 
     MENU_BUTTONS = [
@@ -597,13 +598,14 @@ class RouterFileWidget(QWidget):
     
     deleteRequested = pyqtSignal(str) 
 
-    def __init__(self, app_instance: App, router_util: RouterUtil, router_data: dict):
+    def __init__(self, app_instance: App, router_util: RouterUtil, router_data: dict): 
 
         super().__init__()
 
         self.app = app_instance
         self.router_util = router_util
-        self.router_data = router_data
+        self.main_data = router_data
+        self.temp_data = copy.deepcopy(self.main_data)
 
         layout = QHBoxLayout()
 
@@ -620,7 +622,7 @@ class RouterFileWidget(QWidget):
         data_layout = QVBoxLayout()
 
         router_name_widget = QLineEdit()
-        router_name_widget.setText(self.router_data['name'])
+        router_name_widget.setText(self.temp_data['name'])
         self.app.apply_stylesheet(router_name_widget, "router-title-input-box.css")
         router_name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
         router_name_widget.editingFinished.connect(lambda box=router_name_widget: self.on_name_edited(box.text()))
@@ -630,22 +632,28 @@ class RouterFileWidget(QWidget):
         key_list = self.router_util.editable_key_list
 
         for key in key_list:
-            data_row_widget = self._get_data_row_widget(key, self.router_data[key])
+            data_row_widget = self._get_data_row_widget(key, self.temp_data[key])
             data_layout.addWidget(data_row_widget)
         
-        delete_button_container = QWidget()
-        delete_button_container_layout = QHBoxLayout()
+        button_container = QWidget()
+        button_container_layout = QHBoxLayout()
+
+        save_button = QPushButton("Save")
+        self.app.apply_stylesheet(save_button, "generic-button.css")
+        save_button.pressed.connect(self.on_save_requested)
 
         delete_button = QPushButton("Delete")
         self.app.apply_stylesheet(delete_button, "generic-button.css")
         delete_button.pressed.connect(self.on_delete_requested)
 
-        delete_button_container_layout.addStretch(1)
-        delete_button_container_layout.addWidget(delete_button, 1)
-        delete_button_container_layout.addStretch(1)
-        delete_button_container.setLayout(delete_button_container_layout)
+        button_container_layout.addStretch(1)
+        button_container_layout.addWidget(save_button, 2)
+        button_container_layout.addWidget(delete_button, 2)
+        button_container_layout.addStretch(1)
 
-        data_layout.addWidget(delete_button_container)
+        button_container.setLayout(button_container_layout)
+
+        data_layout.addWidget(button_container)
         data_widget.setLayout(data_layout)
         
         return data_widget
@@ -681,8 +689,8 @@ class RouterFileWidget(QWidget):
 
     def _get_preview_widget(self):
         router_preview_widget = QLabel()
-        self.router_util.get_router_preview(self.router_data)
-        png_path = self.router_data['preview_path']
+        self.router_util.get_router_preview(self.temp_data)
+        png_path = self.temp_data['preview_path']
         pixmap = QPixmap(png_path)
         router_preview_widget.setPixmap(pixmap)
         router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -690,11 +698,11 @@ class RouterFileWidget(QWidget):
         return router_preview_widget
 
     def on_name_edited(self, text: str):
-        self.router_data['name'] = text
+        self.temp_data['name'] = text
 
     def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
         
-        if string == str(self.router_data[key_edited]):
+        if string == str(self.temp_data[key_edited]):
             return
         
         min, max = self.router_util.value_ranges[key_edited]
@@ -702,14 +710,18 @@ class RouterFileWidget(QWidget):
 
         if value is not None:
             box.setText(str(value))
-            self.router_data[key_edited] = value
+            self.temp_data[key_edited] = value
+
+    def on_save_requested(self):
+        self._update_preview()
+        self.main_data = self.temp_data
 
     def on_delete_requested(self):
-        self.deleteRequested.emit(self.router_data['filename'])
+        self.deleteRequested.emit(self.temp_data['filename'])
 
     def _update_preview(self):
-        self.router_util.get_router_preview(self.router_data)
-        png_path = self.router_data['preview_path']
+        self.router_util.get_router_preview(self.temp_data)
+        png_path = self.temp_data['preview_path']
         pixmap = QPixmap(png_path)
         self.preview_widget.setPixmap(pixmap)
 

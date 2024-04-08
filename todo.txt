@@ -2,8 +2,7 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Router widget:
-- Add 'save' button for easier parameter editing
-- fix widget clipping
+- edit glitchy deletion
 
 Stock widget:
 - Add selection screen and 'carousel'

@@ -1,4 +1,5 @@
 import re
+import math
 
 # module for converting units, limiting values
 def parse_text(text: str, min_value: int, max_value: int) -> float:
@@ -9,7 +10,7 @@ def parse_text(text: str, min_value: int, max_value: int) -> float:
         value_mm = float(text)  
     else:
         # Format check
-        match = re.match(r'([\d.]+)([a-zA-Z]+)', text)
+        match = re.match(r'([\d.]+)\s*([a-zA-Z]+)', text)
         if not match:
             return None  
 
@@ -24,5 +25,8 @@ def parse_text(text: str, min_value: int, max_value: int) -> float:
     # Bound check
 
     value_mm = max(min_value, min(value_mm, max_value))
+
+    if math.isclose(value_mm % 1, 0, abs_tol=1e-5):
+        value_mm = int(round(value_mm))
 
     return value_mm
