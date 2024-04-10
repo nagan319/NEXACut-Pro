@@ -14,14 +14,14 @@ from filepaths import * # paths to data folders
 
 from utils.stl_parser import STLParser
 from utils.router_util import RouterUtil
+from utils.plate_util import PlateUtil
 from utils.value_conversion import parse_text
 
-# (almost) all file io is handled in app class, methods are called by widget classes
-# one exception is matplotlib-related image saving which is handled by util classes with dst passed in 
 class App(QApplication):
 
     PART_IMPORT_LIMIT = 20 # limits for cad files
     ROUTER_LIMIT = 10
+    PLATE_LIMIT = 50
 
     MIN_WIDTH = 1200
     MIN_HEIGHT = 1000
@@ -42,6 +42,7 @@ class App(QApplication):
         # long-term data
         self.user_preferences = self.load_user_preferences()
         self.router_data = self.load_router_data()
+        self.plate_data = self.load_plate_data()
 
         # temporary data
         self.imported_files = []
@@ -53,25 +54,51 @@ class App(QApplication):
         self.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
     
     def load_router_data(self): 
-
-        router_data = []
-
-        all_routers = self.load_folder_contents(ROUTER_DATA_FOLDER_PATH)
-
-        for router in all_routers:
-            router_path = os.path.join(ROUTER_DATA_FOLDER_PATH, router)
-            router_data.append(self.read_json(router_path))
-
-        return router_data
+        return self.folder_json_files_to_list(ROUTER_DATA_FOLDER_PATH)
     
     def save_router_data(self): 
-        
-        self.clear_folder_contents(ROUTER_DATA_FOLDER_PATH)
+        self.save_all_json_in_folder(self.router_data, ROUTER_DATA_FOLDER_PATH)
 
-        for i, _ in enumerate(self.router_data):
-            filename = self.router_data[i]['filename']
-            filepath = os.path.join(ROUTER_DATA_FOLDER_PATH, filename)
-            self.save_json(filepath, self.router_data[i])
+    def load_plate_data(self):
+        return self.folder_json_files_to_list(PLATE_DATA_FOLDER_PATH)
+    
+    def save_plate_data(self):
+        self.save_all_json_in_folder(self.plate_data, PLATE_DATA_FOLDER_PATH)
+
+    def folder_json_files_to_list(self, folder_path: str) -> list:
+
+        if not os.path.exists(folder_path):
+            return
+
+        data = []
+
+        files = self.load_folder_contents(folder_path)
+
+        for file in files:
+            file_path = os.path.join(folder_path, file)
+            data.append(self.read_json(file_path))
+        
+        return data
+
+    def save_all_json_in_folder(self, data: list, folder_path: str):
+
+        if not os.path.exists(folder_path):
+            return
+        
+        for item in data:
+            if type(item) != dict:
+                return
+            try:
+                temp = item['filename']
+            except KeyError:
+                return
+        
+        self.clear_folder_contents(folder_path)
+
+        for i, _ in enumerate(data):
+            filename = data[i]['filename']
+            filepath = os.path.join(folder_path, filename)
+            self.save_json(filepath, data[i])
 
     def clear_temporary_data(self):
         for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH]:
@@ -217,7 +244,8 @@ class ContentViewer(QStackedWidget):
         self.__views = [
             HomeWidget(self.app),
             ImportWidget(self.app),
-            RouterWidget(self.app)
+            RouterWidget(self.app),
+            InventoryWidget(self.app)
         ]
         for widget in self.__views:
             self.addWidget(widget)
@@ -253,7 +281,7 @@ class HomeWidget(QWidget):
 
         self.setLayout(self.__layout)
 
-class WidgetTemplate(QWidget): # template for widgets with standard layout (widgets inherit from this but can also access app)
+class WidgetTemplate(QWidget): # template for widgets with standard layout
 
     MARGIN_WIDTH = 1
     WIDGET_WIDTH = 68
@@ -295,9 +323,9 @@ class ArrowButton(QPushButton):
             self.setText('<')
         self.app.apply_stylesheet(self, 'small-button.css')
 
-class WidgetViewer(QStackedWidget): # image viewing 'carousel' (basically grid view)
+class WidgetViewer(QStackedWidget): # grid view
 
-    MAX_WIDGETS_X = 4
+    MAX_WIDGETS_X = 4 # add proper index setting to avoid weird deletion
     MAX_WIDGETS_Y = 2
 
     def __init__(self, app_instance: App, widgets_x: int, widgets_y: int, widgets: list = []): # amount of objects in view 
@@ -611,125 +639,30 @@ class RouterFileWidget(QWidget):
 
         self.app = app_instance
         self.router_util = router_util
-        self.main_data = router_data # reference
-        self.temp_data = copy.deepcopy(self.main_data)
+        self.data = router_data 
 
         layout = QHBoxLayout()
 
-        self.data_widget = self._get_data_widget()
-        self.preview_widget = self._get_preview_widget()
+        self.data_widget = DataWidget(self.app, self.data, self.router_util.editable_keys, self.router_util.value_ranges, True, False)
+        self.data_widget.deleteRequested.connect(self.on_delete_requested)
+        self.data_widget.saveRequested.connect(self.on_save_requested)
+
+        self.preview_widget = PreviewWidget(self.data['preview_path'])
 
         layout.addWidget(self.data_widget, 5)
         layout.addWidget(self.preview_widget, 4)
         self.setLayout(layout)
 
-    def _get_data_widget(self) -> QWidget:
-
-        data_widget = QWidget()
-        data_layout = QVBoxLayout()
-
-        router_name_widget = QLineEdit()
-        router_name_widget.setText(self.temp_data['name'])
-        self.app.apply_stylesheet(router_name_widget, "router-title-input-box.css")
-        router_name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        router_name_widget.editingFinished.connect(lambda box=router_name_widget: self.on_name_edited(box.text()))
-
-        data_layout.addWidget(router_name_widget)
-
-        key_list = self.router_util.editable_key_list
-
-        for key in key_list:
-            data_row_widget = self._get_data_row_widget(key, self.temp_data[key])
-            data_layout.addWidget(data_row_widget)
-        
-        button_container = QWidget()
-        button_container_layout = QHBoxLayout()
-
-        save_button = QPushButton("Save")
-        self.app.apply_stylesheet(save_button, "generic-button.css")
-        save_button.pressed.connect(self.on_save_requested)
-
-        delete_button = QPushButton("Delete")
-        self.app.apply_stylesheet(delete_button, "generic-button.css")
-        delete_button.pressed.connect(self.on_delete_requested)
-
-        button_container_layout.addStretch(1)
-        button_container_layout.addWidget(save_button, 2)
-        button_container_layout.addWidget(delete_button, 2)
-        button_container_layout.addStretch(1)
-
-        button_container.setLayout(button_container_layout)
-
-        data_layout.addWidget(button_container)
-        data_widget.setLayout(data_layout)
-        
-        return data_widget
-
-    def _get_data_row_widget(self, key: str, value: float) -> QWidget:
-
-        data_row_widget = QWidget()
-        data_row_layout = QHBoxLayout()
-
-        key_label = QLabel()
-        key_text = self._edit_key_text(key)
-        key_label.setText(key_text)
-        self.app.apply_stylesheet(key_label, "generic-text.css")
-
-        value_box = QLineEdit()
-        value_box.setText(str(value))
-        value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
-        min_value, max_value = self.router_util.value_ranges[key]
-        value_box.setPlaceholderText(f"{min_value}-{max_value}")
-        self.app.apply_stylesheet(value_box, "small-input-box.css")
-
-        data_row_layout.addWidget(key_label, 3)
-        data_row_layout.addWidget(value_box, 1)
-        data_row_widget.setLayout(data_row_layout)
-
-        return data_row_widget
-
-    def _edit_key_text(self, str: str):
-        words = str.split("_")
-        for i, word in enumerate(words):
-            words[i] = word.capitalize()     
-        return " ".join(words)
-
-    def _get_preview_widget(self):
-        router_preview_widget = QLabel()
-        png_path = self.temp_data['preview_path']
-        pixmap = QPixmap(png_path)
-        router_preview_widget.setPixmap(pixmap)
-        router_preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        return router_preview_widget
-
-    def on_name_edited(self, text: str):
-        self.temp_data['name'] = text
-
-    def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
-        
-        if string == str(self.temp_data[key_edited]):
-            return
-        
-        min, max = self.router_util.value_ranges[key_edited]
-        value = parse_text(string, min, max)
-
-        if value is not None:
-            box.setText(str(value))
-            self.temp_data[key_edited] = value
-
-    def on_save_requested(self):
+    def on_save_requested(self, data):
+        self.data = data
         self._update_preview()
-        self.main_data = self.temp_data
 
     def on_delete_requested(self):
-        self.deleteRequested.emit(self.temp_data['filename'])
+        self.deleteRequested.emit(self.data['filename'])
 
     def _update_preview(self):
-        self.router_util.get_router_preview(self.temp_data)
-        png_path = self.temp_data['preview_path']
-        pixmap = QPixmap(png_path)
-        self.preview_widget.setPixmap(pixmap)
+        self.router_util.save_router_preview(self.data)
+        self.preview_widget.update()
 
 class RouterWidget(WidgetTemplate):
 
@@ -774,14 +707,14 @@ class RouterWidget(WidgetTemplate):
         self.update_add_button_text()
 
     def _get_router_amount(self) -> int:
-        return(len(self.app.router_data))
+        return len(self.app.router_data) 
 
     def add_new_router(self):
         if self._get_router_amount() < self.app.ROUTER_LIMIT:
             new_router_data = self.router_util.get_new_router(self.app.router_data)
             self.app.router_data.append(new_router_data)
             
-            self.router_util.get_router_preview(new_router_data)
+            self.router_util.save_router_preview(new_router_data)
 
             new_router_widget = RouterFileWidget(self.app, self.router_util, new_router_data)
             new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
@@ -808,6 +741,259 @@ class RouterWidget(WidgetTemplate):
         self.app.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
+
+class PreviewWidget(QLabel):
+
+    def __init__(self, png_path: str):
+
+        if not os.path.exists(png_path): 
+            raise ValueError("Attempted to create preview widget with invalid file ")
+
+        super().__init__()
+        
+        self.png_path = png_path
+        self.pixmap = QPixmap(self.png_path)
+        self.setPixmap(self.pixmap)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    def update(self):
+        self.pixmap = QPixmap(self.png_path)
+        self.setPixmap(self.pixmap)
+
+class DataWidget(QWidget):
+
+    deleteRequested = pyqtSignal() 
+    saveRequested = pyqtSignal(dict) # data
+
+    def __init__(self, app_instance: App, data: dict, editable_keys: list, value_ranges: list, has_name_property: False, is_small: False):
+
+        if len(value_ranges) != len(editable_keys):
+            raise ValueError("Each editable key must have a corresponding value range")
+        
+        if has_name_property and 'name' not in data.keys():
+            raise ValueError("Data must include name property")
+
+        super().__init__()
+
+        if is_small:
+            self.button_stylesheet = 'small-button.css'
+            self.text_stylesheet = 'small-text.css'
+            self.key_val_ratio = (3, 2)
+        else:
+            self.button_stylesheet = 'generic-button.css'
+            self.text_stylesheet = 'generic-text.css'
+            self.key_val_ratio = (3, 1)
+
+        self.app = app_instance
+        self.data = data
+        self.editable_keys = editable_keys
+        self.value_ranges = value_ranges
+
+        layout = QVBoxLayout()
+
+        if has_name_property:
+            name_widget = QLineEdit()
+            name_widget.setText(self.data['name'])
+            self.app.apply_stylesheet(name_widget, "data-title-input-box.css")
+            name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            name_widget.editingFinished.connect(lambda box=name_widget: self.on_name_edited(box.text()))
+
+            layout.addWidget(name_widget)
+
+        for key in self.editable_keys:
+            data_row_widget = self._get_data_row_widget(key, self.data[key])
+            layout.addWidget(data_row_widget)
+        
+        button_container = QWidget()
+        button_container_layout = QHBoxLayout()
+
+        save_button = QPushButton("Save")
+        self.app.apply_stylesheet(save_button, self.button_stylesheet)
+        save_button.pressed.connect(self.on_save_requested)
+
+        delete_button = QPushButton("Delete")
+        self.app.apply_stylesheet(delete_button, self.button_stylesheet)
+        delete_button.pressed.connect(self.on_delete_requested)
+
+        button_container_layout.addStretch(1)
+        button_container_layout.addWidget(save_button, 2)
+        button_container_layout.addWidget(delete_button, 2)
+        button_container_layout.addStretch(1)
+
+        button_container.setLayout(button_container_layout)
+
+        layout.addWidget(button_container)
+        self.setLayout(layout)
+
+    def _get_data_row_widget(self, key: str, value: float) -> QWidget:
+
+        data_row_widget = QWidget()
+        data_row_layout = QHBoxLayout()
+
+        key_label = QLabel()
+        key_text = self._edit_key_text(key)
+        key_label.setText(key_text)
+        self.app.apply_stylesheet(key_label, self.text_stylesheet)
+
+        value_box = QLineEdit()
+        value_box.setText(str(value))
+        value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
+        if type(self.value_ranges[key]) == tuple and self.value_ranges[key] is not None: 
+            min_value, max_value = self.value_ranges[key]
+            value_box.setPlaceholderText(f"{min_value}-{max_value}")
+        else:
+            value_box.setPlaceholderText(f"")
+        self.app.apply_stylesheet(value_box, "small-input-box.css")
+  
+        data_row_layout.addWidget(key_label, self.key_val_ratio[0])
+        data_row_layout.addWidget(value_box, self.key_val_ratio[1])
+        data_row_widget.setLayout(data_row_layout)
+
+        return data_row_widget
+
+    def _edit_key_text(self, str: str):
+        words = str.split("_")
+        for i, word in enumerate(words):
+            words[i] = word.capitalize()     
+        return " ".join(words)
+
+    def on_name_edited(self, text: str):
+        self.data['name'] = text
+
+    def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
+        
+        if string == str(self.data[key_edited]):
+            return
+        
+        if self.value_ranges[key_edited]:
+            min, max = self.value_ranges[key_edited]
+            value = parse_text(string, min, max)
+        else:
+            value = parse_text(string)
+
+        if value is not None:
+            box.setText(str(value))
+            self.data[key_edited] = value
+
+    def on_save_requested(self):
+        self.saveRequested.emit(self.data)
+
+    def on_delete_requested(self):
+        self.deleteRequested.emit()
+
+class PlateFileWidget(QWidget):
+
+    deleteRequested = pyqtSignal(str)
+
+    def __init__(self, app_instance: App, plate_util: PlateUtil, data: dict):
+        super().__init__()
+
+        self.app = app_instance
+        self.plate_util = plate_util
+        self.data = data
+
+        layout = QVBoxLayout()
+
+        self.preview_widget = PreviewWidget(self.data['preview_path'])
+
+        self.data_widget = DataWidget(self.app, self.data, self.plate_util.editable_keys, self.plate_util.value_ranges, False, True)
+        self.data_widget.deleteRequested.connect(self.on_delete_requested)
+        self.data_widget.saveRequested.connect(self.on_save_requested)
+
+        layout.addWidget(self.preview_widget, 1)
+        layout.addWidget(self.data_widget, 1)
+        self.setLayout(layout)
+    
+    def on_save_requested(self, data: dict):
+        self.data = data
+        self._update_preview()
+
+    def on_delete_requested(self):
+        self.deleteRequested.emit(self.data['filename'])
+
+    def _update_preview(self):
+        self.plate_util.save_preview_image(self.data)
+        self.preview_widget.update()
+
+class InventoryWidget(WidgetTemplate):
+
+    def __init__(self, app_instance: App):
+        super().__init__(app_instance)
+
+        self.plate_util = PlateUtil(PLATE_DATA_PREVIEW_FOLDER_PATH)
+
+        self.__init_gui__()
+
+    def __init_gui__(self):
+
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        
+        plate_widgets = [PlateFileWidget(self.app, self.plate_util, plate) for plate in self.app.plate_data]
+
+        for widget in plate_widgets:
+            widget.deleteRequested.connect(self.on_plate_delete_requested)
+
+        self.__file_preview_widget = WidgetViewer(self.app, 3, 1, plate_widgets) 
+
+        self.__add_new_button_wrapper = QWidget()
+        self.__add_new_button_wrapper_layout = QHBoxLayout()
+
+        self.__add_new_button = QPushButton()
+        self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        self.__add_new_button.clicked.connect(self.add_new_plate)
+
+        self.__add_new_button_wrapper_layout.addStretch(2)
+        self.__add_new_button_wrapper_layout.addWidget(self.__add_new_button, 1)
+        self.__add_new_button_wrapper_layout.addStretch(2)
+        self.__add_new_button_wrapper.setLayout(self.__add_new_button_wrapper_layout)
+
+        main_layout.addWidget(self.__file_preview_widget, 7)
+        main_layout.addWidget(self.__add_new_button_wrapper, 1)
+        main_widget.setLayout(main_layout)
+
+        self.app.apply_stylesheet(main_widget, "light.css")
+
+        self.__init_template_gui__("Manage Inventory", main_widget)
+        self.update_add_button_text()
+        
+    def _get_idx_of_filename(self, filename: str):
+        for idx, dict in enumerate(self.app.router_data):
+            if dict['filename'] == filename: 
+                return idx
+        return -1
+
+    def _get_plate_amount(self) -> int:
+        return len(self.app.plate_data)
+
+    def add_new_plate(self):
+        if self._get_plate_amount() < self.app.PLATE_LIMIT:
+            new_plate_data = self.plate_util.get_new_plate(self.app.plate_data)
+            self.app.plate_data.append(new_plate_data)
+            
+            self.plate_util.save_preview_image(new_plate_data)
+
+            new_plate_widget = PlateFileWidget(self.app, self.plate_util, new_plate_data)
+            new_plate_widget.deleteRequested.connect(self.on_plate_delete_requested)
+
+            self.__file_preview_widget.append_widgets([new_plate_widget])
+            self.update_add_button_text() 
+
+    def on_plate_delete_requested(self, filename: str):
+        index = self._get_idx_of_filename(filename)
+        png_path = self.app.plate_data[index]['preview_path']
+        if os.path.exists(png_path):
+            self.app.delete_file(png_path)
+        self.app.plate_data.pop(index)
+        self.__file_preview_widget.pop_widget(index)
+        self.update_add_button_text()
+
+    def update_add_button_text(self):
+        if self._get_plate_amount() >= self.app.PLATE_LIMIT:
+            self.app.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+        else:
+            self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.app.PLATE_LIMIT})")
 
 if __name__ == '__main__':
     app = App(sys.argv)

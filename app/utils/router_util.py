@@ -22,10 +22,10 @@ class RouterUtil: # class containing router-related constants
     DEFAULT_DRILL_BIT_DIAMETER = 5
     DEFAULT_MILL_BIT_DIAMETER = 10
 
-    def __init__(self, router_preview_path: str):
+    def __init__(self, router_preview_folder_path: str):
 
-        self.router_preview_path = router_preview_path
-        self.editable_key_list = self._get_editable_keys()
+        self.router_preview_folder_path = router_preview_folder_path
+        self.editable_keys = self._get_editable_keys()
         self.value_ranges = self._load_value_ranges()
 
         self.plot_bg_color: str='#ffffff' 
@@ -98,14 +98,13 @@ class RouterUtil: # class containing router-related constants
     def get_preview_path(self, router_filename: str) -> str:
 
         filename_no_extension = os.path.splitext(router_filename)[0]
-        preview_path = os.path.join(self.router_preview_path, filename_no_extension+'.png')
+        preview_path = os.path.join(self.router_preview_folder_path, filename_no_extension+'.png')
         return preview_path
     
-    def get_router_preview(self, router_data: dict, figsize: tuple = (8, 8), dpi: int = 80):
-        
-        image_path = router_data['preview_path']
+    def save_router_preview(self, router_data: dict, figsize: tuple = (8, 8), dpi: int = 80):
 
         try: 
+            image_path = router_data['preview_path']
             router_xy = router_data["machineable_area_(x-axis)"], router_data["machineable_area_(y-axis)"]
             plate_xy = router_data["max_plate_size_(x-axis)"], router_data["max_plate_size_(y-axis)"]
             safe_distance = router_data["min_safe_distance_from_edge"]

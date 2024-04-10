@@ -1,11 +1,13 @@
 Title widget:
 - Draw new logo that fits updated gui
 
-Router widget:
-- edit glitchy deletion
-
 Stock widget:
-- Add selection screen and 'carousel'
-- Include image preview library here
+- make plate deletion work properly
+- integrate image preview
 
+Grid view widget:
+- add button cooldown for deletion/addition
 
+Utils:
+- Create general util class for plate/router util (very similar)
+- Consider creating general plate/router widget (??)
