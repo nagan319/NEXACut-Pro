@@ -16,6 +16,8 @@ from utils.stl_parser import STLParser
 from utils.router_util import RouterUtil
 from utils.plate_util import PlateUtil
 from utils.value_conversion import parse_text
+from app.utils.image_conversion.image_converter import ImageConverter
+from utils.image_conversion.constants import SUPPORTED_IMAGE_FORMATS
 
 class App(QApplication):
 
@@ -106,6 +108,7 @@ class App(QApplication):
 
     def __close_app(self):
         self.save_router_data()
+        self.save_plate_data()
         self.save_user_preferences()
         self.clear_temporary_data()
 
@@ -884,6 +887,7 @@ class DataWidget(QWidget):
 class PlateFileWidget(QWidget):
 
     deleteRequested = pyqtSignal(str)
+    previewRequested = pyqtSignal(str)
 
     def __init__(self, app_instance: App, plate_util: PlateUtil, data: dict):
         super().__init__()
@@ -896,14 +900,28 @@ class PlateFileWidget(QWidget):
 
         self.preview_widget = PreviewWidget(self.data['preview_path'])
 
+        self.img_button_container = QWidget()
+        self.img_button_container_layout = QHBoxLayout()
+        self.img_button = QPushButton("Import Image")
+        self.img_button.pressed.connect(self.on_preview_requested)
+        self.app.apply_stylesheet(self.img_button, 'small-button.css')
+        self.img_button_container_layout.addStretch(1)
+        self.img_button_container_layout.addWidget(self.img_button, 2)
+        self.img_button_container_layout.addStretch(1)
+        self.img_button_container.setLayout(self.img_button_container_layout)
+
         self.data_widget = DataWidget(self.app, self.data, self.plate_util.editable_keys, self.plate_util.value_ranges, False, True)
         self.data_widget.deleteRequested.connect(self.on_delete_requested)
         self.data_widget.saveRequested.connect(self.on_save_requested)
 
-        layout.addWidget(self.preview_widget, 1)
-        layout.addWidget(self.data_widget, 1)
+        layout.addWidget(self.preview_widget, 5)
+        layout.addWidget(self.img_button_container, 1)
+        layout.addWidget(self.data_widget, 4)
         self.setLayout(layout)
-    
+
+    def on_preview_requested(self):
+        self.previewRequested.emit(self.data['filename'])
+
     def on_save_requested(self, data: dict):
         self.data = data
         self._update_preview()
@@ -921,6 +939,8 @@ class InventoryWidget(WidgetTemplate):
         super().__init__(app_instance)
 
         self.plate_util = PlateUtil(PLATE_DATA_PREVIEW_FOLDER_PATH)
+
+        self.image_editor_active = False
 
         self.__init_gui__()
 
@@ -958,7 +978,7 @@ class InventoryWidget(WidgetTemplate):
         self.update_add_button_text()
         
     def _get_idx_of_filename(self, filename: str):
-        for idx, dict in enumerate(self.app.router_data):
+        for idx, dict in enumerate(self.app.plate_data):
             if dict['filename'] == filename: 
                 return idx
         return -1
@@ -975,9 +995,16 @@ class InventoryWidget(WidgetTemplate):
 
             new_plate_widget = PlateFileWidget(self.app, self.plate_util, new_plate_data)
             new_plate_widget.deleteRequested.connect(self.on_plate_delete_requested)
-
+            new_plate_widget.previewRequested.connect(self.on_plate_preview_requested)
             self.__file_preview_widget.append_widgets([new_plate_widget])
             self.update_add_button_text() 
+
+    def on_plate_preview_requested(self, filename: str):
+        if self.image_editor_active:
+            return
+    
+        self.image_editor_active = True
+        self._create_image_edit_window()
 
     def on_plate_delete_requested(self, filename: str):
         index = self._get_idx_of_filename(filename)
@@ -994,6 +1021,72 @@ class InventoryWidget(WidgetTemplate):
         else:
             self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.app.PLATE_LIMIT})")
+
+    def _create_image_edit_window(self):
+        self.image_editor = ImageEditorWindow(self.app) # necessary to keep reference to prevent immediate closure
+        self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
+
+    def on_image_editor_closed(self):
+        self.image_editor_active = False
+
+
+class ImageEditorWindow(QMainWindow):
+    
+    MIN_HEIGHT = 800
+    MIN_WIDTH = 800
+    WINDOW_TITLE = 'Attach Image File'
+
+    imageEditorClosed = pyqtSignal()
+
+    def __init__(self, app_instance: App):
+        super().__init__()
+        self.app = app_instance
+
+        self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
+        self.setWindowTitle(self.WINDOW_TITLE)
+
+        self.__init_gui__()
+    
+    def __init_gui__(self):
+        self.__layout = QVBoxLayout()
+        self.__layout.setContentsMargins(0, 0, 0, 0) 
+        self.__layout.setSpacing(0)
+        self.__widget = QWidget()
+        self.__widget.setLayout(self.__layout)
+        self.setCentralWidget(self.__widget)
+        self.show()
+
+    def closeEvent(self, event):
+        print()
+        self.imageEditorClosed.emit()
+
+class ImageEditorWidget(QStackedWidget):
+
+    def __init__(self, app_instance: App):
+        super().__init__()
+        self.app = app_instance
+
+    def __init_gui__(self):
+
+        self.load_image_widget = QWidget()
+        self.load_image_layout = QVBoxLayout()
+        
+        self.load_image_button = QPushButton("Load Image Files")
+        self.load_image_button.pressed.connect(self.import_image_file)
+    
+    def import_image_file(self):
+ 
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "All Files (*)") # change to all valid files mentioned in image constants
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     app = App(sys.argv)

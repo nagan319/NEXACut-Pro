@@ -78,7 +78,7 @@ class PlateUtil:
         preview_path = os.path.join(self.plate_preview_folder_path, filename_no_extension+'.png')
         return preview_path
     
-    def save_preview_image(self, plate_data: dict, figsize: tuple = (3.5, 3.5), dpi: int = 80):
+    def save_preview_image(self, plate_data: dict, figsize: tuple = (4, 4), dpi: int = 80):
 
         try: 
             image_path = plate_data['preview_path']

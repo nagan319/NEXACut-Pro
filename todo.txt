@@ -2,12 +2,11 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Stock widget:
-- make plate deletion work properly
 - integrate image preview
+- add parameter to avoid unit conversion etc. for string fields
 
 Grid view widget:
 - add button cooldown for deletion/addition
 
 Utils:
-- Create general util class for plate/router util (very similar)
-- Consider creating general plate/router widget (??)
+- refactor image conversion library for better integration

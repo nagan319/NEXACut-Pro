@@ -1,1 +1,0 @@
-save_preview_image
