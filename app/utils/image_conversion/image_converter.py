@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import cv2
 from typing import Tuple
+import traceback
 
 from .constants import *
 
@@ -31,6 +32,8 @@ class ImageConverter:
 
         self.preview_folder_path = preview_folder_path
         
+        self.feature_manager = None
+
         try:
             self.colors = colors # necessary for feature controller
             self.background_color = colors['background_color']
@@ -50,8 +53,8 @@ class ImageConverter:
     def reset_preview(self):
         try:
             clear_all_files(self.preview_folder_path)
-        except(Exception) as e:
-            print(e)
+        except(Exception):
+            traceback.print_exc()
 
     def save_external_image_as_raw(self, external_image_path): 
         try:
@@ -61,8 +64,8 @@ class ImageConverter:
             write_image(self.preview_folder_path, RAW_EXTENSION, image)
             self.state = RAW_STATE
                 
-        except(Exception) as e:
-            print(e)
+        except(Exception):
+            traceback.print_exc()
 
     def save_binary_image(self, threshold_value: int = 100): 
         try:
@@ -74,8 +77,8 @@ class ImageConverter:
             self.processing_resolution = image.shape[:2]
             self.state = BINARY_STATE
         
-        except(Exception) as e:
-            print(e)
+        except(Exception):
+            traceback.print_exc()
             
     def save_contour_image(self): # saves blank canvas with contours
         try:
@@ -85,27 +88,18 @@ class ImageConverter:
             write_image(self.preview_folder_path, CONTOUR_EXTENSION, image)
             self.state = CONTOUR_STATE
         
-        except(Exception) as e:
-            print(e)
-
-    def __initialize_feature_manager(self):
-        if not self.processing_resolution:
-            raise ValueError("Processing resolution not initialized")
-        if not self.colors: 
-            raise ValueError("Color palletes not initialized")
-        self.feature_manager = FeatureManager(self.processing_resolution, self.colors)
+        except(Exception):
+            traceback.print_exc()
     
     def get_contours_from_binary(self):
         try:
-            self._check_state(BINARY_STATE, CONTOUR_STATE)
             binary_image_path = os.path.join(self.preview_folder_path, BINARY_EXTENSION)
             image = read_image(binary_image_path, True)
-            self.__initialize_feature_manager()
+            self.feature_manager = FeatureManager(self.processing_resolution, self.colors)
             self.feature_manager.get_features(image)
-            write_image(self.preview_folder_path, CONTOUR_EXTENSION, image)
 
-        except(Exception) as e:
-            print(e)
+        except(Exception):
+            traceback.print_exc()
 
     def save_flattened_image(self):
         try:
@@ -130,5 +124,5 @@ class ImageConverter:
             write_image(self.preview_folder_path, FLATTENED_EXTENSION, image)
             self.state = FLATTENED_STATE
             
-        except(Exception) as e:
-            print(e)    
+        except(Exception):
+            traceback.print_exc()    

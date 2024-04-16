@@ -2,11 +2,9 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Stock widget:
-- integrate image preview
+- fix issue with existing plates unable to access preview
 - add parameter to avoid unit conversion etc. for string fields
+- fix featureManager not initializing 
 
 Grid view widget:
 - add button cooldown for deletion/addition
-
-Utils:
-- refactor image conversion library for better integration
