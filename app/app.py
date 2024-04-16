@@ -7,17 +7,19 @@ import copy
 import math
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QButtonGroup, QComboBox, QLineEdit
-from PyQt6.QtGui import QPixmap, QFontDatabase, QPalette, QBrush
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QStackedWidget, QFileDialog, QLineEdit, QSlider
+from PyQt6.QtGui import QPixmap, QFontDatabase
 
-from filepaths import * # paths to data folders
+from filepaths import * 
 
 from utils.stl_parser import STLParser
+
 from utils.router_util import RouterUtil
 from utils.plate_util import PlateUtil
 from utils.value_conversion import parse_text
-from app.utils.image_conversion.image_converter import ImageConverter
-from utils.image_conversion.constants import SUPPORTED_IMAGE_FORMATS
+
+from utils.image_conversion.image_converter import ImageConverter
+from utils.image_conversion.constants import SUPPORTED_IMAGE_FORMATS, RAW_EXTENSION, BINARY_EXTENSION, CONTOUR_EXTENSION, FLATTENED_EXTENSION
 
 class App(QApplication):
 
@@ -1004,7 +1006,7 @@ class InventoryWidget(WidgetTemplate):
             return
     
         self.image_editor_active = True
-        self._create_image_edit_window()
+        self._create_image_edit_window(filename)
 
     def on_plate_delete_requested(self, filename: str):
         index = self._get_idx_of_filename(filename)
@@ -1022,8 +1024,14 @@ class InventoryWidget(WidgetTemplate):
             self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.app.PLATE_LIMIT})")
 
-    def _create_image_edit_window(self):
-        self.image_editor = ImageEditorWindow(self.app) # necessary to keep reference to prevent immediate closure
+    def _create_image_edit_window(self, filename: str):
+        
+        plate_idx = self._get_idx_of_filename(filename)
+        plate_dimensions = tuple([self.app.plate_data[plate_idx][key] for key in ['width_(x)', 'height_(y)', 'thickness_(z)']])
+
+        self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_dimensions)
+
+        self.image_editor = ImageEditorWindow(self.app, self.image_converter) # necessary to keep reference to prevent immediate closure
         self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
 
     def on_image_editor_closed(self):
@@ -1038,9 +1046,11 @@ class ImageEditorWindow(QMainWindow):
 
     imageEditorClosed = pyqtSignal()
 
-    def __init__(self, app_instance: App):
+    def __init__(self, app_instance: App, image_converter_instance: ImageConverter):
         super().__init__()
+
         self.app = app_instance
+        self.image_converter = image_converter_instance
 
         self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
         self.setWindowTitle(self.WINDOW_TITLE)
@@ -1051,6 +1061,8 @@ class ImageEditorWindow(QMainWindow):
         self.__layout = QVBoxLayout()
         self.__layout.setContentsMargins(0, 0, 0, 0) 
         self.__layout.setSpacing(0)
+        self.image_editor = ImageEditorWidget(self.app, self.image_converter)
+        self.__layout.addWidget(self.image_editor)
         self.__widget = QWidget()
         self.__widget.setLayout(self.__layout)
         self.setCentralWidget(self.__widget)
@@ -1062,31 +1074,153 @@ class ImageEditorWindow(QMainWindow):
 
 class ImageEditorWidget(QStackedWidget):
 
-    def __init__(self, app_instance: App):
+    def __init__(self, app_instance: App, image_converter_instance: ImageConverter):
         super().__init__()
         self.app = app_instance
+        self.image_converter = image_converter_instance
+        self.__init_gui__()
 
     def __init_gui__(self):
 
-        self.load_image_widget = QWidget()
-        self.load_image_layout = QVBoxLayout()
-        
-        self.load_image_button = QPushButton("Load Image Files")
-        self.load_image_button.pressed.connect(self.import_image_file)
+        self.app.apply_stylesheet(self, 'light.css')
+
+        self.setCurrentIndex(0)
+
+        params = (self.app, self.image_converter)
+
+        self.image_load_widget = ImageLoadWidget(*params)
+        self.image_load_widget.imageImported.connect(self.on_image_imported)
+
+        self.image_threshold_widget = ImageThresholdWidget(*params)
+        self.image_threshold_widget.binaryFinalized.connect(self.on_binary_finalized)
+
+        for widget in [self.image_load_widget, self.image_threshold_widget]:
+            self.addWidget(widget)
+
+    def on_image_imported(self):
+        self.setCurrentIndex(1)
+        self.image_threshold_widget.update_preview()
     
+    def on_binary_finalized(self):
+        self.setCurrentIndex(2)
+    
+class ImageLoadWidget(QWidget):
+
+    imageImported = pyqtSignal()
+
+    def __init__(self, app_instance: App, image_converter_instance: ImageConverter):
+        super().__init__()
+        self.app = app_instance
+        self.image_converter = image_converter_instance
+        self.__init_gui__()
+    
+    def __init_gui__(self):
+        self.main_layout = QVBoxLayout()
+
+        self.button_frame = QWidget()
+        self.button_frame_layout = QHBoxLayout()
+        self.import_button = QPushButton("Import Image File")
+        self.app.apply_stylesheet(self.import_button, 'generic-button.css')
+        self.import_button.pressed.connect(self.import_image_file)
+
+        self.button_frame_layout.addStretch(2)
+        self.button_frame_layout.addWidget(self.import_button, 1)
+        self.button_frame_layout.addStretch(2)
+        self.button_frame.setLayout(self.button_frame_layout)
+
+        self.main_layout.addStretch(3)
+        self.main_layout.addWidget(self.button_frame, 1)
+        self.main_layout.addStretch(3)
+
+        self.setLayout(self.main_layout)
+
     def import_image_file(self):
  
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", "All Files (*)") # change to all valid files mentioned in image constants
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", SUPPORTED_IMAGE_FORMATS)
+        self.image_converter.save_external_image_as_raw(file_path)
+        self.imageImported.emit()
 
+class ImageThresholdWidget(QWidget):
 
+    binaryFinalized = pyqtSignal()
 
+    COLOR_MIN = 0
+    COLOR_MAX = 255
+    COLOR_MID = (COLOR_MIN + COLOR_MAX)//2
 
+    def __init__(self, app_instance: App, image_converter_instance: ImageConverter):
+        super().__init__()
 
+        self.app = app_instance
+        self.image_converter = image_converter_instance
+        
+        self.threshold = self.COLOR_MID
 
+        self.__init_gui__()
 
+    def __init_gui__(self):
+        self.layout_with_margins = QHBoxLayout()
 
+        self.main_widget = QWidget()
+        self.main_layout = QVBoxLayout()
 
+        self.preview_widget = QLabel()
+        self.preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+        self.slider_label = QLabel("Adjust Threshold Value")
+        self.slider_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.app.apply_stylesheet(self.slider_label, 'small-text.css')
+
+        self.slider = QSlider()
+        self.slider.setOrientation(Qt.Orientation.Horizontal) 
+        self.slider.setMinimum(self.COLOR_MIN)
+        self.slider.setMaximum(self.COLOR_MAX)
+        self.slider.setValue(self.COLOR_MID)
+
+        self.slider.setTickPosition(QSlider.TickPosition.TicksBelow)  
+        self.slider.setTickInterval(16)
+
+        self.slider.valueChanged.connect(self.on_threshold_parameter_edited)
+
+        self.save_button_wrapper = QWidget()
+        self.save_button_wrapper_layout = QHBoxLayout()
+        self.save_button = QPushButton("Save Binary")
+        self.save_button.pressed.connect(self.on_save_button_pressed)
+        self.app.apply_stylesheet(self.save_button, 'small-button.css')
+
+        self.save_button_wrapper_layout.addStretch(2)
+        self.save_button_wrapper_layout.addWidget(self.save_button, 1)
+        self.save_button_wrapper_layout.addStretch(2)
+        self.save_button_wrapper.setLayout(self.save_button_wrapper_layout)
+
+        self.main_layout.addWidget(self.preview_widget, 3)
+        self.main_layout.addWidget(self.slider_label, 0)
+        self.main_layout.addWidget(self.slider, 1)
+        self.main_layout.addWidget(self.save_button_wrapper, 0)
+        self.main_widget.setLayout(self.main_layout)
+
+        self.layout_with_margins.addStretch(1)
+        self.layout_with_margins.addWidget(self.main_widget, 5)
+        self.layout_with_margins.addStretch(1)
+
+        self.setLayout(self.layout_with_margins)
+
+    def _generate_binary(self):
+        self.image_converter.save_binary_image(self.threshold)
+
+    def update_preview(self):
+        self._generate_binary()
+        binary_path = os.path.join(IMAGE_PREVIEW_DATA_PATH, BINARY_EXTENSION)
+        pixmap = QPixmap(binary_path)
+        scaled_pixmap = pixmap.scaledToHeight(600)
+        self.preview_widget.setPixmap(scaled_pixmap)
+    
+    def on_threshold_parameter_edited(self, value: int):
+        self.threshold = value
+        self.update_preview()
+
+    def on_save_button_pressed(self):
+        self.binaryFinalized.emit()
 
 if __name__ == '__main__':
     app = App(sys.argv)
