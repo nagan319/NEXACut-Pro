@@ -6,13 +6,13 @@ from .feat_detect import detect_contours, detect_corners
 
 class FeatureManager:
     
-    def __init__(self, processing_resolution: Tuple[int, int], colors: Tuple): # checks for all values carried out in ImageConversionManager
+    def __init__(self, processing_resolution: Tuple[int, int], colors: dict): # checks for all values carried out in ImageConversionManager
 
-        self.background_color = colors[0]           
-        self.contour_color = colors[1]
-        self.selected_element_color = colors[2]
-        self.plate_edge_color = colors[3]
-        self.corner_color = colors[4]
+        self.background_color = colors['background_color']           
+        self.contour_color = colors['contour_color']
+        self.selected_element_color = colors['selected_element_color']
+        self.plate_edge_color = colors['plate_edge_color']
+        self.corner_color = colors['corner_color']
 
         self.feature_canvas = None
         self.processing_resolution = processing_resolution

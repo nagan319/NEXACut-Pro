@@ -4,7 +4,7 @@ Title widget:
 Stock widget:
 - fix issue with existing plates unable to access preview
 - add parameter to avoid unit conversion etc. for string fields
-- fix featureManager not initializing 
+- fix featureManager for invalid images (no features)
 
 Grid view widget:
 - add button cooldown for deletion/addition

@@ -31,8 +31,6 @@ class ImageConverter:
         self.output_resolution = [plate_size[0]*MAX_PPMM, plate_size[1]*MAX_PPMM]
 
         self.preview_folder_path = preview_folder_path
-        
-        self.feature_manager = None
 
         try:
             self.colors = colors # necessary for feature controller
@@ -43,6 +41,8 @@ class ImageConverter:
             self.corner_color = colors['corner_color']
         except(KeyError):
             raise KeyError("Color dict missing keys")
+        
+        self.feature_manager = FeatureManager(self.output_resolution, self.colors)
 
     def _check_state(self, min_state, max_state):
         if self.state < min_state:
@@ -95,7 +95,6 @@ class ImageConverter:
         try:
             binary_image_path = os.path.join(self.preview_folder_path, BINARY_EXTENSION)
             image = read_image(binary_image_path, True)
-            self.feature_manager = FeatureManager(self.processing_resolution, self.colors)
             self.feature_manager.get_features(image)
 
         except(Exception):
