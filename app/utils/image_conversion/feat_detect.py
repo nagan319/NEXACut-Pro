@@ -37,8 +37,7 @@ def detect_contours(image, processing_resolution) -> Tuple[list, list]: # return
     
     areas = [cv2.contourArea(contour) for contour in filtered_contours]
     max_area_idx = areas.index(max(areas))
-    max_contour = filtered_contours[max_area_idx]
-    filtered_contours.remove(max_contour)
+    max_contour = filtered_contours.pop(max_area_idx)
 
     return filtered_contours, max_contour
 

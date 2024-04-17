@@ -28,13 +28,14 @@ class FeatureManager:
         try: 
             self.contours, self.largest_contour = detect_contours(image, self.processing_resolution)
             self.corners = detect_corners(self.largest_contour)
+            print(f"Contours: {self.contours} \nCorners: {self.corners}")
 
         except(ValueError) as e:
             raise e
 
     def draw_features(self):
 
-        if not self.largest_contour or not self.corners:
+        if len(self.largest_contour) == 0 or len(self.corners) == 0:
             raise ValueError("No features detected")
 
         height, width = self.processing_resolution

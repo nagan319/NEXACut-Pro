@@ -94,7 +94,7 @@ class ImageConverter:
     def get_contours_from_binary(self):
         try:
             binary_image_path = os.path.join(self.preview_folder_path, BINARY_EXTENSION)
-            image = read_image(binary_image_path, True)
+            image = read_image(binary_image_path, False)
             self.feature_manager.get_features(image)
 
         except(Exception):

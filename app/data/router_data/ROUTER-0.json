@@ -1,9 +1,9 @@
 {
     "filename": "ROUTER-0.json",
     "preview_path": "c:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\app\\data\\router_preview_data\\ROUTER-0.png",
-    "name": "New CNC Router",
+    "name": "OMIO X8-2200",
     "machineable_area_(x-axis)": 600,
-    "machineable_area_(y-axis)": 914.4000000000001,
+    "machineable_area_(y-axis)": 1022,
     "machineable_area_(z-axis)": 500,
     "max_plate_size_(x-axis)": 1000,
     "max_plate_size_(y-axis)": 2000,
