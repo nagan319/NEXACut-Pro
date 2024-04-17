@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVB
 from PyQt6.QtGui import QPixmap, QFontDatabase
 
 from filepaths import * 
+from file_operations import FileProcessor
 
 from utils.stl_parser import STLParser
 
@@ -41,78 +42,39 @@ class App(QApplication):
 
     def __init__(self, argv):
         super().__init__(argv)
+
+        self.file_processor = FileProcessor()
+
         atexit.register(self.__close_app)
 
         # long-term data
-        self.user_preferences = self.load_user_preferences()
-        self.router_data = self.load_router_data()
-        self.plate_data = self.load_plate_data()
+        self.user_preferences = self.get_user_preferences()
+        self.router_data = self.get_router_data()
+        self.plate_data = self.get_plate_data()
 
         # temporary data
         self.imported_files = []
-        
-    def load_user_preferences(self) -> dict:
-        return self.read_json(USER_PREFERENCE_FILE_PATH)
+
+
+    def get_user_preferences(self) -> dict:
+        return self.file_processor.get_json_data(USER_PREFERENCE_FILE_PATH)
     
     def save_user_preferences(self):
-        self.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
+        self.file_processor.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
     
-    def load_router_data(self): 
-        return self.folder_json_files_to_list(ROUTER_DATA_FOLDER_PATH)
+
+    def get_router_data(self): 
+        return self.file_processor.get_all_json_in_folder(ROUTER_DATA_FOLDER_PATH)
     
     def save_router_data(self): 
-        self.save_all_json_in_folder(self.router_data, ROUTER_DATA_FOLDER_PATH)
+        self.file_processor.save_all_json_to_folder(self.router_data, ROUTER_DATA_FOLDER_PATH)
 
-    def load_plate_data(self):
-        return self.folder_json_files_to_list(PLATE_DATA_FOLDER_PATH)
+
+    def get_plate_data(self):
+        return self.file_processor.get_all_json_in_folder(PLATE_DATA_FOLDER_PATH)
     
     def save_plate_data(self):
-        self.save_all_json_in_folder(self.plate_data, PLATE_DATA_FOLDER_PATH)
-
-    def folder_json_files_to_list(self, folder_path: str) -> list:
-
-        if not os.path.exists(folder_path):
-            return
-
-        data = []
-
-        files = self.load_folder_contents(folder_path)
-
-        for file in files:
-            file_path = os.path.join(folder_path, file)
-            data.append(self.read_json(file_path))
-        
-        return data
-
-    def save_all_json_in_folder(self, data: list, folder_path: str):
-
-        if not os.path.exists(folder_path):
-            return
-        
-        for item in data:
-            if type(item) != dict:
-                return
-            try:
-                temp = item['filename']
-            except KeyError:
-                return
-        
-        self.clear_folder_contents(folder_path)
-
-        for i, _ in enumerate(data):
-            filename = data[i]['filename']
-            filepath = os.path.join(folder_path, filename)
-            self.save_json(filepath, data[i])
-
-    def clear_temporary_data(self):
-        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH]:
-            self.clear_folder_contents(folder)
-
-    def __close_app(self):
-        self.save_router_data()
-        self.save_plate_data()
-        self.save_user_preferences()
-        self.clear_temporary_data()
+        self.file_processor.save_all_json_to_folder(self.plate_data, PLATE_DATA_FOLDER_PATH)
 
     def apply_stylesheet(self, widget: QWidget, stylesheet_file: str): # read stylesheet info from css
 
@@ -124,59 +86,16 @@ class App(QApplication):
         with open(stylesheet_path, 'r') as f:
             stylesheet = f.read()
             widget.setStyleSheet(stylesheet)
-
-    def load_folder_contents(self, filepath: str): # get filenames in folder
-
-        if not os.path.exists(filepath):
-            return []
-        
-        return os.listdir(filepath)
     
-    def clear_folder_contents(self, dirpath: str, *exceptions: str): # clears directory except certain files
+    def clear_temporary_data(self):
+        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH]:
+            self.file_processor.clear_folder_contents(folder)
 
-        if not os.path.exists(dirpath):
-            return
-        
-        for filename in os.listdir(dirpath):
-            if filename not in exceptions:
-                filepath = os.path.join(dirpath, filename)
-                os.remove(filepath)
-    
-    def delete_file(self, filepath: str):
-
-        if not (os.path.exists(filepath)):
-            return
-        
-        os.remove(filepath)
-
-    def copy_file(self, src_path: str, dst_path: str): # copies a to b
-
-        if not (os.path.exists(src_path) or os.path.exists(dst_path)):
-            return
-        
-        os.remove(dst_path)
-        shutil.copyfile(src_path, dst_path)
-
-    def read_json(self, filepath: str): # extract data from json
-
-        if not os.path.exists(filepath):
-            return 
-        
-        if os.path.splitext(filepath)[1].lower() != '.json':
-            return
-        
-        with open(filepath, 'r') as file:
-            data = json.load(file)
-        
-        return data
-    
-    def save_json(self, filepath: str, data: dict): # saves dict to json
-        
-        if os.path.splitext(filepath)[1].lower() != '.json':
-            return
-
-        with open(filepath, 'w') as file:
-            json.dump(data, file, indent=4)
+    def __close_app(self):
+        self.save_router_data()
+        self.save_plate_data()
+        self.save_user_preferences()
+        self.clear_temporary_data()
 
 class MainWindow(QMainWindow):
 
@@ -677,6 +596,7 @@ class RouterWidget(WidgetTemplate):
         self.router_util = RouterUtil(ROUTER_PREVIEW_DATA_PATH)
 
         self.__init_gui__()
+        self.__init_timeout__()
 
     def __init_gui__(self):
 
@@ -711,10 +631,17 @@ class RouterWidget(WidgetTemplate):
         self.__init_template_gui__("Configure CNC Router", main_widget)
         self.update_add_button_text()
 
+    def __init_timeout__(self):
+        self.timeout = False
+
     def _get_router_amount(self) -> int:
         return len(self.app.router_data) 
 
     def add_new_router(self):
+        if self.timeout:
+            return
+
+        self.timeout = True
         if self._get_router_amount() < self.app.ROUTER_LIMIT:
             new_router_data = self.router_util.get_new_router(self.app.router_data)
             self.app.router_data.append(new_router_data)
@@ -726,6 +653,7 @@ class RouterWidget(WidgetTemplate):
 
             self.__file_preview_widget.append_widgets([new_router_widget])
             self.update_add_button_text() 
+        self.timeout = False
 
     def update_add_button_text(self):
         if self._get_router_amount() >= self.app.ROUTER_LIMIT:
@@ -741,11 +669,16 @@ class RouterWidget(WidgetTemplate):
         return -1
 
     def on_router_delete_requested(self, filename: str):
+        if self.timeout:
+            return
+    
+        self.timeout = True
         index = self._get_idx_of_filename(filename)
-        self.app.delete_file(self.app.router_data[index]['preview_path'])
+        self.app.file_processor.delete_file(self.app.router_data[index]['preview_path'])
         self.app.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
+        self.timeout = False
 
 class PreviewWidget(QLabel):
 
@@ -889,7 +822,7 @@ class DataWidget(QWidget):
 class PlateFileWidget(QWidget):
 
     deleteRequested = pyqtSignal(str)
-    previewRequested = pyqtSignal(str)
+    importRequested = pyqtSignal(str)
 
     def __init__(self, app_instance: App, plate_util: PlateUtil, data: dict):
         super().__init__()
@@ -905,7 +838,7 @@ class PlateFileWidget(QWidget):
         self.img_button_container = QWidget()
         self.img_button_container_layout = QHBoxLayout()
         self.img_button = QPushButton("Import Image")
-        self.img_button.pressed.connect(self.on_preview_requested)
+        self.img_button.pressed.connect(self.on_import_requested)
         self.app.apply_stylesheet(self.img_button, 'small-button.css')
         self.img_button_container_layout.addStretch(1)
         self.img_button_container_layout.addWidget(self.img_button, 2)
@@ -921,8 +854,8 @@ class PlateFileWidget(QWidget):
         layout.addWidget(self.data_widget, 4)
         self.setLayout(layout)
 
-    def on_preview_requested(self):
-        self.previewRequested.emit(self.data['filename'])
+    def on_import_requested(self):
+        self.importRequested.emit(self.data['filename'])
 
     def on_save_requested(self, data: dict):
         self.data = data
@@ -945,6 +878,7 @@ class InventoryWidget(WidgetTemplate):
         self.image_editor_active = False
 
         self.__init_gui__()
+        self.__init_timeout__()
 
     def __init_gui__(self):
 
@@ -955,6 +889,7 @@ class InventoryWidget(WidgetTemplate):
 
         for widget in plate_widgets:
             widget.deleteRequested.connect(self.on_plate_delete_requested)
+            widget.importRequested.connect(self.on_plate_import_image_requested)
 
         self.__file_preview_widget = WidgetViewer(self.app, 3, 1, plate_widgets) 
 
@@ -978,7 +913,10 @@ class InventoryWidget(WidgetTemplate):
 
         self.__init_template_gui__("Manage Inventory", main_widget)
         self.update_add_button_text()
-        
+    
+    def __init_timeout__(self):
+        self.timeout = False
+
     def _get_idx_of_filename(self, filename: str):
         for idx, dict in enumerate(self.app.plate_data):
             if dict['filename'] == filename: 
@@ -989,6 +927,10 @@ class InventoryWidget(WidgetTemplate):
         return len(self.app.plate_data)
 
     def add_new_plate(self):
+        if self.timeout:
+            return
+
+        self.timeout = True
         if self._get_plate_amount() < self.app.PLATE_LIMIT:
             new_plate_data = self.plate_util.get_new_plate(self.app.plate_data)
             self.app.plate_data.append(new_plate_data)
@@ -997,25 +939,32 @@ class InventoryWidget(WidgetTemplate):
 
             new_plate_widget = PlateFileWidget(self.app, self.plate_util, new_plate_data)
             new_plate_widget.deleteRequested.connect(self.on_plate_delete_requested)
-            new_plate_widget.previewRequested.connect(self.on_plate_preview_requested)
+            new_plate_widget.importRequested.connect(self.on_plate_import_image_requested)
             self.__file_preview_widget.append_widgets([new_plate_widget])
             self.update_add_button_text() 
 
-    def on_plate_preview_requested(self, filename: str):
+        self.timeout = False            
+
+    def on_plate_import_image_requested(self, filename: str):
         if self.image_editor_active:
             return
-    
+
         self.image_editor_active = True
         self._create_image_edit_window(filename)
 
     def on_plate_delete_requested(self, filename: str):
+        if self.timeout:
+            return
+
+        self.timeout = True
         index = self._get_idx_of_filename(filename)
         png_path = self.app.plate_data[index]['preview_path']
         if os.path.exists(png_path):
-            self.app.delete_file(png_path)
+            self.app.file_processor.delete_file(png_path)
         self.app.plate_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
+        self.timeout = False
 
     def update_add_button_text(self):
         if self._get_plate_amount() >= self.app.PLATE_LIMIT:
@@ -1036,7 +985,6 @@ class InventoryWidget(WidgetTemplate):
 
     def on_image_editor_closed(self):
         self.image_editor_active = False
-
 
 class ImageEditorWindow(QMainWindow):
     

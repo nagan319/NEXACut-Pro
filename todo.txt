@@ -2,9 +2,11 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Stock widget:
-- fix issue with existing plates unable to access preview
 - add parameter to avoid unit conversion etc. for string fields
 - fix featureManager for invalid images (no features)
 
 Grid view widget:
 - add button cooldown for deletion/addition
+
+General:
+- Add setup.py file

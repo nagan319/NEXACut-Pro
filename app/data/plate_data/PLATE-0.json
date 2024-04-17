@@ -4,6 +4,6 @@
     "width_(x)": 1000,
     "height_(y)": 1000,
     "thickness_(z)": 10,
-    "material": "Aluminum",
+    "material": 609.6,
     "contours": null
 }

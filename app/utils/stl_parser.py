@@ -1,4 +1,5 @@
 import os
+import json
 import math
 import random
 import numpy as np
@@ -39,13 +40,16 @@ class STLParser: # convertes stl to polygon
         if not self.is_stl_format_valid():
             raise ValueError(f"STL file {self.stl_filepath} must be in vector format")
         
+        self.__init_properties__()
+
+    def __init_properties__(self):
         self.flat_axis = self.determine_axis_to_flatten()
         self.thickness = self.get_thickness()
         self.flattened_mesh = self.flatten_stl()
         self.outer_edges = self.get_outer_edges(self.flat_axis)
         self.contours = self.get_contours()
         self.outer_contour = self.get_outermost_contour()
-        self.outer_contour = self.smooth_contour(self.outer_contour)
+        self.outer_contour = self.get_smooth_contour(self.outer_contour)
 
     def is_valid_stl(self, file_path) -> bool:
         try: 
@@ -184,7 +188,7 @@ class STLParser: # convertes stl to polygon
 
         return outermost_contour
     
-    def smooth_contour(self, contour: np.array) -> np.array: # makes sure contour has even distribution of points for faster/more accurate comparison
+    def get_smooth_contour(self, contour: np.array) -> np.array: # makes sure contour has even distribution of points for faster/more accurate comparison
         threshold1 = 10
         threshold2 = 20
         contour = self.remove_points(contour, threshold1)
@@ -232,8 +236,6 @@ class STLParser: # convertes stl to polygon
 
         return np.array(new_contour)
 
-    # svg helper methods
-
     def get_bounding_box(self, contour: np.array) -> np.array:
         x_coords = contour[:, 0]
         y_coords = contour[:, 1]
@@ -243,41 +245,4 @@ class STLParser: # convertes stl to polygon
         max_y = np.max(y_coords)
         return np.array([min_x, max_x, min_y, max_y])
 
-    def get_center(self, contour: np.array) -> list:
-        min_x, max_x, min_y, max_y = self.get_bounding_box(contour)
-        x_center = (min_x + max_x) / 2
-        y_center = (min_y + max_y) / 2
-        return np.array([x_center, y_center])
-
-    def get_bounding_circle(self, contour: np.array) -> tuple: # returns bounding circle for given shape
-        center = self.get_center(contour)
-        max_radius = 0
-        for point in contour:
-            radius = np.linalg.norm(point - center)
-            if radius > max_radius:
-                max_radius = radius
-        return (center, max_radius)
-
-    # for testing
-
-    def plot_contours(self, contours: list):
-        plt.figure()
-
-        for contour in contours:
-            color = self._random_color()
-            for point in contour:
-                x, y = point
-                plt.scatter(x, y, color=color)
-
-        plt.grid(True)
-        plt.gca().set_aspect('equal') 
-        plt.grid(False)
-        plt.show()
-
-    def _random_color(self):
-        chars = [str(i) for i in range(10)] + ['a', 'b', 'c', 'd', 'e', 'f']
-        color = '#'+''.join(random.choice(chars) for _ in range(6))
-        return color
-
-# parser = STLParser("C:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\test cad files\\RollerConnectorPlate.STL")
-# parser.plot_contours([parser.outer_contour])
+test_stl_path = "C:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\tests\\test stl parser\\test stl files"
