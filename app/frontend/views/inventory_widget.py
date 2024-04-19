@@ -1,5 +1,4 @@
 import os
-
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
 from ..utils.style import apply_stylesheet
@@ -9,22 +8,22 @@ from ..utils.file_widgets.plate_file_widget import PlateFileWidget
 
 from ...backend.utils.plate_util import PlateUtil
 from ...backend.utils.image_conversion.image_converter import ImageConverter
+from ...backend.utils.file_operations import FileProcessor
 
-from ...config import IMAGE_PREVIEW_DATA_PATH, PLATE_DATA_PREVIEW_FOLDER_PATH
+from ...config import IMAGE_PREVIEW_DATA_PATH, PLATE_PREVIEW_DATA_PATH
 
 class InventoryWidget(WidgetTemplate):
 
     def __init__(self, plate_data: list, plate_limit: int):
         super().__init__()
 
-        self.plate_util = PlateUtil(PLATE_DATA_PREVIEW_FOLDER_PATH)
+        self.plate_util = PlateUtil(PLATE_PREVIEW_DATA_PATH)
 
         self.plate_data = plate_data
         self.plate_limit = plate_limit
         self.image_editor_active = False
 
         self.__init_gui__()
-        self.__init_timeout__()
 
     def __init_gui__(self):
 
@@ -59,9 +58,6 @@ class InventoryWidget(WidgetTemplate):
 
         self.__init_template_gui__("Manage Inventory", main_widget)
         self.update_add_button_text()
-    
-    def __init_timeout__(self):
-        self.timeout = False
 
     def _get_idx_of_filename(self, filename: str):
         for idx, dict in enumerate(self.plate_data):
@@ -73,10 +69,6 @@ class InventoryWidget(WidgetTemplate):
         return len(self.plate_data)
 
     def add_new_plate(self):
-        if self.timeout:
-            return
-
-        self.timeout = True
         if self._get_plate_amount() < self.plate_limit:
             new_plate_data = self.plate_util.get_new_plate(self.plate_data)
             self.plate_data.append(new_plate_data)
@@ -87,9 +79,7 @@ class InventoryWidget(WidgetTemplate):
             new_plate_widget.deleteRequested.connect(self.on_plate_delete_requested)
             new_plate_widget.importRequested.connect(self.on_plate_import_image_requested)
             self.__file_preview_widget.append_widgets([new_plate_widget])
-            self.update_add_button_text() 
-
-        self.timeout = False            
+            self.update_add_button_text()         
 
     def on_plate_import_image_requested(self, filename: str):
         if self.image_editor_active:
@@ -99,16 +89,16 @@ class InventoryWidget(WidgetTemplate):
         self._create_image_edit_window(filename)
 
     def on_plate_delete_requested(self, filename: str):
-        if self.timeout:
-            return
-
         self.timeout = True
         index = self._get_idx_of_filename(filename)
+
+        file_processor = FileProcessor()
         png_path = self.plate_data[index]['preview_path']
+        file_processor.delete_file(png_path)
+
         self.plate_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
-        self.timeout = False
 
     def update_add_button_text(self):
         if self._get_plate_amount() >= self.plate_limit:

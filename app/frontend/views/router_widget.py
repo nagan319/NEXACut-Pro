@@ -1,3 +1,4 @@
+import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
 from ..utils.style import apply_stylesheet
@@ -6,6 +7,7 @@ from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.router_file_widget import RouterFileWidget
 
 from ...backend.utils.router_util import RouterUtil
+from ...backend.utils.file_operations import FileProcessor
 
 from ...config import ROUTER_PREVIEW_DATA_PATH
 
@@ -19,7 +21,6 @@ class RouterWidget(WidgetTemplate):
         self.router_limit = router_limit
 
         self.__init_gui__()
-        self.__init_timeout__()
 
     def __init_gui__(self):
 
@@ -54,29 +55,24 @@ class RouterWidget(WidgetTemplate):
         self.__init_template_gui__("Configure CNC Router", main_widget)
         self.update_add_button_text()
 
-    def __init_timeout__(self):
-        self.timeout = False
-
     def _get_router_amount(self) -> int:
         return len(self.router_data) 
 
     def add_new_router(self):
-        if self.timeout:
+        if self._get_router_amount() >= self.router_limit:
             return
+        
+        new_router_data = self.router_util.get_new_router(self.router_data)
+        self.router_data.append(new_router_data)
+        
+        self.router_util.save_router_preview(new_router_data)
 
-        self.timeout = True
-        if self._get_router_amount() < self.router_limit:
-            new_router_data = self.router_util.get_new_router(self.router_data)
-            self.router_data.append(new_router_data)
-            
-            self.router_util.save_router_preview(new_router_data)
+        new_router_widget = RouterFileWidget(self.router_util, new_router_data)
+        new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
 
-            new_router_widget = RouterFileWidget(self.router_util, new_router_data)
-            new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
+        self.__file_preview_widget.append_widgets([new_router_widget])
+        self.update_add_button_text() 
 
-            self.__file_preview_widget.append_widgets([new_router_widget])
-            self.update_add_button_text() 
-        self.timeout = False
 
     def update_add_button_text(self):
         if self._get_router_amount() >= self.router_limit:
@@ -92,12 +88,12 @@ class RouterWidget(WidgetTemplate):
         return -1
 
     def on_router_delete_requested(self, filename: str):
-        if self.timeout:
-            return
-    
-        self.timeout = True
         index = self._get_idx_of_filename(filename)
+
+        filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, filename)
+        file_processor = FileProcessor()
+        file_processor.delete_file(filepath)
+
         self.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
-        self.timeout = False

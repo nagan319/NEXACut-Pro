@@ -16,9 +16,3 @@ REFACTORING:
 - figure out font import issue
 - store plate/router data using custom objects
 - make image widgets work
-- better manage preview file deletion
-
-file management config:
-- permanent data does not need to be modified at runtime (arrays passed automatically)
-- should optimize temp data 
-- singleton ok but requires importing mgr into each module (inefficient)

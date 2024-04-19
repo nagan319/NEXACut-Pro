@@ -37,7 +37,7 @@ class PlateFileWidget(QWidget):
         apply_stylesheet(import_button, 'small-button.css')
 
         import_button_container_layout.addStretch(1)
-        import_button_container_layout.addWidget(self.img_button, 2)
+        import_button_container_layout.addWidget(import_button, 2)
         import_button_container_layout.addStretch(1)
         import_button_container.setLayout(import_button_container_layout)
         return import_button_container

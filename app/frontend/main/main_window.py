@@ -9,7 +9,7 @@ from ..views.import_widget import ImportWidget
 from ..views.router_widget import RouterWidget
 from ..views.inventory_widget import InventoryWidget
 
-from ...backend.file_data_mgr import FileDataManager
+from ...backend.data_mgr import DataManager
 
 from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
 
@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         "Generate Optimal Placement", 
         "Configure Preferences"]
 
-    def __init__(self, data_manager: FileDataManager): 
+    def __init__(self, data_manager: DataManager): 
         super().__init__()
 
         self.setWindowTitle(APP_TITLE)

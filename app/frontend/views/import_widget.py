@@ -1,5 +1,4 @@
 import os
-
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
 from ..utils.style import apply_stylesheet
@@ -8,6 +7,7 @@ from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.stl_file_widget import STLFileWidget
 
 from ...backend.utils.stl_parser import STLParser
+from ...backend.utils.file_operations import FileProcessor
 
 from ...config import CAD_PREVIEW_DATA_PATH
 
@@ -27,27 +27,25 @@ class ImportWidget(WidgetTemplate):
         
         self.__file_preview_widget = WidgetViewer(4, 2) 
 
-        self.__import_button_wrapper = QWidget()
-        self.__import_button_wrapper_layout = QHBoxLayout()
-
         self.__import_button = QPushButton()
-        apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.clicked.connect(self.import_files)
-        self.update_import_button_text()
+        apply_stylesheet(self.__import_button, "generic-button.css")
 
-        self.__import_button_wrapper_layout.addStretch(2)
-        self.__import_button_wrapper_layout.addWidget(self.__import_button, 1)
-        self.__import_button_wrapper_layout.addStretch(2)
-        self.__import_button_wrapper.setLayout(self.__import_button_wrapper_layout)
+        import_button_wrapper = QWidget()
+        import_button_wrapper_layout = QHBoxLayout()
+        import_button_wrapper_layout.addStretch(2)
+        import_button_wrapper_layout.addWidget(self.__import_button, 1)
+        import_button_wrapper_layout.addStretch(2)
+        import_button_wrapper.setLayout(import_button_wrapper_layout)
 
         main_layout.addWidget(self.__file_preview_widget, 7)
-        main_layout.addWidget(self.__import_button_wrapper, 1)
+        main_layout.addWidget(import_button_wrapper, 1)
         main_widget.setLayout(main_layout)
-
         apply_stylesheet(main_widget, "light.css")
 
-        self.__init_template_gui__("Import Part Files", main_widget)
+        self.update_import_button_text()
 
+        self.__init_template_gui__("Import Part Files", main_widget)
 
     def _get_total_part_amount(self) -> int:
         total = 0
@@ -136,6 +134,11 @@ class ImportWidget(WidgetTemplate):
 
     def on_widget_delete_request(self, filename: str): 
         index = self._get_idx_of_filename(filename)
+
+        filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
+        file_processor = FileProcessor()
+        file_processor.delete_file(filepath)
+
         self.imported_parts.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_import_button_text()

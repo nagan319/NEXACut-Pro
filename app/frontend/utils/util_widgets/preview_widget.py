@@ -9,7 +9,7 @@ class PreviewWidget(QLabel):
     def __init__(self, png_path: str):
 
         if not os.path.exists(png_path): 
-            raise ValueError("Attempted to create preview widget with invalid file ")
+            raise ValueError(f"Attempted to create preview widget with invalid file {png_path}")
 
         super().__init__()
         

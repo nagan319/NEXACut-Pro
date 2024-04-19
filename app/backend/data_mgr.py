@@ -1,17 +1,18 @@
 import atexit
 from .utils.file_operations import FileProcessor
 
-class FileDataManager:
+class DataManager:
 
     PART_IMPORT_LIMIT = 20 
     ROUTER_LIMIT = 10
     PLATE_LIMIT = 50
 
-    def __init__(self, user_pref_path: str, router_data_path: str, plate_data_path: str):
+    def __init__(self, user_pref_path: str, router_data_path: str, plate_data_path: str, temp_data_folders: list):
 
         self.USER_PREFERENCE_FILE_PATH = user_pref_path
         self.ROUTER_DATA_FOLDER_PATH = router_data_path
         self.PLATE_DATA_FOLDER_PATH = plate_data_path
+        self.TEMP_DATA_FOLDERS = temp_data_folders
 
         self.file_processor = FileProcessor()
         self.__init_long_term_data__()
@@ -39,6 +40,7 @@ class FileDataManager:
         self.__save_user_preferences__()
         self.__save_router_data__()
         self.__save_plate_data__()
+        self.__clear_temporary_data__()
 
     def __save_user_preferences__(self):
         self.file_processor.save_json(self.USER_PREFERENCE_FILE_PATH, self.user_preferences)
@@ -48,3 +50,7 @@ class FileDataManager:
     
     def __save_plate_data__(self):
         self.file_processor.save_all_json_to_folder(self.plate_data, self.PLATE_DATA_FOLDER_PATH)
+
+    def __clear_temporary_data__(self):
+        for folder in self.TEMP_DATA_FOLDERS:
+            self.file_processor.clear_folder_contents(folder)
