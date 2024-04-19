@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
-from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QWidget
+from PyQt6.QtGui import QFontDatabase, QFont
 
 from ..utils.util_widgets.menu_widget import Menu
 from ..utils.util_widgets.content_viewer import ContentViewer
@@ -9,7 +9,7 @@ from ..views.import_widget import ImportWidget
 from ..views.router_widget import RouterWidget
 from ..views.inventory_widget import InventoryWidget
 
-from ...backend.data_mgr import DataManager
+from ...backend.file_data_mgr import FileDataManager
 
 from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
 
@@ -23,12 +23,12 @@ class MainWindow(QMainWindow):
         "Generate Optimal Placement", 
         "Configure Preferences"]
 
-    def __init__(self, data_manager: DataManager): 
+    def __init__(self, data_manager: FileDataManager): 
         super().__init__()
 
         self.setWindowTitle(APP_TITLE)
         self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
-        QFontDatabase.addApplicationFont(MAIN_FONT_PATH)
+        QFontDatabase.addApplicationFont(MAIN_FONT_PATH) # figure out this issue
 
         self.__layout = QHBoxLayout()
         self.__layout.setContentsMargins(0, 0, 0, 0) 

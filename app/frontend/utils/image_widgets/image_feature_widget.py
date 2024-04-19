@@ -2,9 +2,9 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtGui import QPixmap
 
-from utils.style import apply_stylesheet
+from ...utils.style import apply_stylesheet
 
-from backend.utils.image_conversion.image_converter import ImageConverter
+from ....backend.utils.image_conversion.image_converter import ImageConverter
 
 class ImageFeatureWidget(QWidget):
 

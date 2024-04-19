@@ -1,0 +1,14 @@
+{
+    "filename": "ROUTER-0.json",
+    "preview_path": "c:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\app\\data\\router_preview_data\\ROUTER-0.png",
+    "name": "New CNC Router",
+    "machineable_area_(x-axis)": 500,
+    "machineable_area_(y-axis)": 1500,
+    "machineable_area_(z-axis)": 500,
+    "max_plate_size_(x-axis)": 1000,
+    "max_plate_size_(y-axis)": 2000,
+    "max_plate_size_(z-axis)": 500,
+    "min_safe_distance_from_edge": 50,
+    "drill_bit_diameter": 5,
+    "mill_bit_diameter": 10
+}

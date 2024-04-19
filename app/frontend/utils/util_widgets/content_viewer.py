@@ -17,5 +17,5 @@ class ContentViewer(QStackedWidget):
         self.setCurrentIndex(0)
 
     def set_view(self, index: int):
-        if 0 <= index < len(self.amt_widgets):
+        if 0 <= index < self.amt_widgets:
             self.setCurrentIndex(index)

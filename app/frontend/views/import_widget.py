@@ -20,7 +20,6 @@ class ImportWidget(WidgetTemplate):
         self.part_import_limit = part_import_limit
 
         self.__init_gui__()
-        self.__init_timeout__()
     
     def __init_gui__(self):
         main_widget = QWidget()
@@ -49,8 +48,6 @@ class ImportWidget(WidgetTemplate):
 
         self.__init_template_gui__("Import Part Files", main_widget)
 
-    def __init_timeout__(self):
-        self.timeout = True
 
     def _get_total_part_amount(self) -> int:
         total = 0
@@ -75,13 +72,8 @@ class ImportWidget(WidgetTemplate):
         self.imported_parts.append(new_entry)
 
     def import_files(self): 
-        if self.timeout:
-            return
-
         if self._get_total_part_amount() >= self.part_import_limit:
             return
-
-        self.timeout = True
 
         IMPORT_LIMIT = 10 
         
@@ -130,8 +122,6 @@ class ImportWidget(WidgetTemplate):
         self.__file_preview_widget.append_widgets(widgets)
         self.update_import_button_text()
 
-        self.timeout = False
-
     def update_import_button_text(self):
         if self._get_total_part_amount() >= self.part_import_limit:
             apply_stylesheet(self.__import_button, "generic-button-red.css")
@@ -144,13 +134,9 @@ class ImportWidget(WidgetTemplate):
         self.imported_parts[index]['amount'] = value
         self.update_import_button_text()
 
-    def on_widget_delete_request(self, filename: str):
-        if self.timeout:
-            return
-        
-        self.timeout = True
+    def on_widget_delete_request(self, filename: str): 
         index = self._get_idx_of_filename(filename)
         self.imported_parts.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_import_button_text()
-        self.timeout = False
+

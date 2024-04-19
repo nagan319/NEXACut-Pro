@@ -14,10 +14,9 @@ class ImageThresholdWidget(QWidget):
     COLOR_MAX = 255
     COLOR_MID = (COLOR_MIN + COLOR_MAX)//2
 
-    def __init__(self, app_instance: App, image_converter_instance: ImageConverter):
+    def __init__(self, image_converter_instance: ImageConverter):
         super().__init__()
 
-        self.app = app_instance
         self.image_converter = image_converter_instance
         
         self.threshold = self.COLOR_MID
