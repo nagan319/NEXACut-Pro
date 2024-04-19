@@ -1,15 +1,17 @@
 import math
-from PyQt6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
+from PyQt6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout
 
 from style import Style
 from arrow_button import ArrowButton
 
+from config import MIN_HEIGHT
+
 class WidgetViewer(QStackedWidget): # grid view
 
-    MAX_WIDGETS_X = 4 # add proper index setting to avoid weird deletion
+    MAX_WIDGETS_X = 4 
     MAX_WIDGETS_Y = 2
 
-    def __init__(self, widgets_x: int, widgets_y: int, widgets: list = []): # amount of objects in view 
+    def __init__(self, widgets_x: int, widgets_y: int, widgets: list = []): 
 
         if widgets_x > self.MAX_WIDGETS_X or widgets_x <= 0:
             raise ValueError(f"widgets_x must be in range 0-{self.MAX_WIDGETS_X}")
@@ -48,7 +50,7 @@ class WidgetViewer(QStackedWidget): # grid view
             try: 
                 self.widgets.pop(widget_idx)
                 self.update_view()
-            except Exception: # Avoids IndexError due to lag
+            except Exception: 
                 return
 
     def _get_max_tab_idx(self):
@@ -74,7 +76,7 @@ class WidgetViewer(QStackedWidget): # grid view
         max_widget_idx = all_slots_used_max_idx if all_slots_used_max_idx < len(self.widgets) else len(self.widgets) - 1
 
         main_widget = QWidget()
-        main_layout = QHBoxLayout() # includes left/right arrow keys if relevant, applied to 'self'
+        main_layout = QHBoxLayout() 
 
         if tab_idx > 0:
             left_arrow = ArrowButton(False)

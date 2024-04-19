@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushB
 
 from style import Style
 
+from app.backend.utils.input_parser import parse_text
+
 class DataWidget(QWidget):
 
     deleteRequested = pyqtSignal() 

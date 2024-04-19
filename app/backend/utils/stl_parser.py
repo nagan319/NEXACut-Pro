@@ -1,7 +1,5 @@
 import os
-import json
 import math
-import random
 import numpy as np
 from collections import defaultdict
 from stl import mesh
@@ -245,4 +243,4 @@ class STLParser: # convertes stl to polygon
         max_y = np.max(y_coords)
         return np.array([min_x, max_x, min_y, max_y])
 
-test_stl_path = "C:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\tests\\test stl parser\\test stl files"
+# test_stl_path = "C:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\tests\\test stl parser\\test stl files"

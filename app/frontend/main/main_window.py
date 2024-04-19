@@ -1,17 +1,19 @@
-from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 from PyQt6.QtGui import QFontDatabase
 
 from frontend.utils.util_widgets.menu_widget import Menu
 from frontend.utils.util_widgets.content_viewer import ContentViewer
 
-from app.config import MAIN_FONT_PATH
+from frontend.views.home_widget import HomeWidget
+from frontend.views.import_widget import ImportWidget
+from frontend.views.router_widget import RouterWidget
+from frontend.views.inventory_widget import InventoryWidget
+
+from backend.data_mgr import DataManager
+
+from app.config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
 
 class MainWindow(QMainWindow):
-
-    MIN_WIDTH = 1200
-    MIN_HEIGHT = 1000
-    APP_TITLE = 'NEXACut Pro'
 
     MENU_BUTTONS = [
         "Home", 
@@ -21,23 +23,26 @@ class MainWindow(QMainWindow):
         "Generate Optimal Placement", 
         "Configure Preferences"]
 
-    WIDGETS = [ # edit
-
-    ]
-
-    def __init__(self): 
+    def __init__(self, data_manager: DataManager): 
         super().__init__()
-        self.setWindowTitle(self.APP_TITLE)
-        self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
+
+        self.setWindowTitle(APP_TITLE)
+        self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
         QFontDatabase.addApplicationFont(MAIN_FONT_PATH)
-        self.__init_gui__()
-    
-    def __init_gui__(self):
+
         self.__layout = QHBoxLayout()
         self.__layout.setContentsMargins(0, 0, 0, 0) 
         self.__layout.setSpacing(0)
 
         self.__menu = Menu(self.MENU_BUTTONS)
+
+        self.WIDGETS = [
+            HomeWidget(),
+            ImportWidget(data_manager.imported_parts, data_manager.PART_IMPORT_LIMIT),
+            RouterWidget(data_manager.router_data, data_manager.ROUTER_LIMIT),
+            InventoryWidget(data_manager.plate_data, data_manager.PLATE_LIMIT)
+        ]
+
         self.__content_viewer = ContentViewer(self.WIDGETS)
 
         self.__layout.addWidget(self.__menu, 2)

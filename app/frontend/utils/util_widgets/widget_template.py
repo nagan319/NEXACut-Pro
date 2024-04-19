@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel
 
 from style import Style
 
-class WidgetTemplate(QWidget): # template for widgets with standard layout
+class WidgetTemplate(QWidget): 
 
     MARGIN_WIDTH = 1
     WIDGET_WIDTH = 68

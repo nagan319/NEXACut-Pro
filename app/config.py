@@ -1,5 +1,11 @@
 import os
 
+# global vars
+
+MIN_WIDTH = 1200
+MIN_HEIGHT = 1000
+APP_TITLE = 'NEXACut Pro'
+
 CURRENT_DIR = os.path.dirname(__file__)
 
 # frontend
@@ -15,6 +21,12 @@ FONT_FOLDER_PATH = os.path.join(RESOURCES_FOLDER_PATH, FONT_FOLDER)
 
 MAIN_FONT = 'Tajawal-Regular.tff'
 MAIN_FONT_PATH = os.path.join(FONT_FOLDER_PATH, MAIN_FONT)
+
+IMAGES_FOLDER = 'images'
+IMAGES_PATH = os.path.join(RESOURCES_FOLDER_PATH, IMAGES_FOLDER)
+
+LOGO_IMAGE = 'NEXACut Logo.png'
+LOGO_PATH = os.path.join(IMAGES_PATH, LOGO_IMAGE)
 
 # data
 

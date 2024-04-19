@@ -1,13 +1,24 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
+import os
+
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
 from frontend.utils.style import Style
-from frontend.utils.widget_template import WidgetTemplate
-from frontend.utils.widget_viewer import WidgetViewer
+from frontend.utils.util_widgets.widget_template import WidgetTemplate
+from frontend.utils.util_widgets.widget_viewer import WidgetViewer
+from frontend.utils.file_widgets.stl_file_widget import STLFileWidget
+
+from backend.utils.stl_parser import STLParser
+
+from config import CAD_PREVIEW_DATA_PATH
 
 class ImportWidget(WidgetTemplate):
 
-    def __init__(self):
+    def __init__(self, imported_parts: list, part_import_limit: int):
         super().__init__()
+
+        self.imported_parts = imported_parts
+        self.part_import_limit = part_import_limit
+
         self.__init_gui__()
         self.__init_timeout__()
     
@@ -43,7 +54,7 @@ class ImportWidget(WidgetTemplate):
 
     def _get_total_part_amount(self) -> int:
         total = 0
-        for file in self.app.imported_files:
+        for file in self.imported_parts:
             try:
                 total += file['amount']
             except Exception:
@@ -51,7 +62,7 @@ class ImportWidget(WidgetTemplate):
         return total
     
     def _get_idx_of_filename(self, filename: str):
-        for idx, dict in enumerate(self.app.imported_files):
+        for idx, dict in enumerate(self.imported_parts):
             if dict['filename'] == filename: 
                 return idx
         return -1
@@ -61,13 +72,13 @@ class ImportWidget(WidgetTemplate):
             "filename": filename, 
             "amount": amount, 
             "outer_contour": outer_contour}
-        self.app.imported_files.append(new_entry)
+        self.imported_parts.append(new_entry)
 
     def import_files(self): 
         if self.timeout:
             return
 
-        if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+        if self._get_total_part_amount() >= self.part_import_limit:
             return
 
         self.timeout = True
@@ -84,14 +95,14 @@ class ImportWidget(WidgetTemplate):
 
             if imported >= IMPORT_LIMIT:
                 break
-            if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
+            if self._get_total_part_amount() >= self.part_import_limit:
                 break
                 
             file_name = os.path.basename(path)
 
             duplicate = False
 
-            for file in self.app.imported_files:
+            for file in self.imported_parts:
                 if file["filename"] == file_name:
                     duplicate = True
 
@@ -104,7 +115,7 @@ class ImportWidget(WidgetTemplate):
                 outer_contour = parser.outer_contour
                 png_location = parser.preview_path
 
-                preview_widget = STLFileWidget(self.app, file_name, png_location)
+                preview_widget = STLFileWidget(file_name, png_location)
                 preview_widget.deleteRequested.connect(self.on_widget_delete_request)
                 preview_widget.amountEdited.connect(self.on_widget_amt_edited)
                 widgets.append(preview_widget)
@@ -122,15 +133,15 @@ class ImportWidget(WidgetTemplate):
         self.timeout = False
 
     def update_import_button_text(self):
-        if self._get_total_part_amount() >= self.app.PART_IMPORT_LIMIT:
-            self.app.apply_stylesheet(self.__import_button, "generic-button-red.css")
+        if self._get_total_part_amount() >= self.part_import_limit:
+            Style.apply_stylesheet(self.__import_button, "generic-button-red.css")
         else:
-            self.app.apply_stylesheet(self.__import_button, "generic-button.css")
-        self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.app.PART_IMPORT_LIMIT})")
+            Style.apply_stylesheet(self.__import_button, "generic-button.css")
+        self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
 
     def on_widget_amt_edited(self, filename: str, value: int): 
         index = self._get_idx_of_filename(filename)
-        self.app.imported_files[index]['amount'] = value
+        self.imported_parts[index]['amount'] = value
         self.update_import_button_text()
 
     def on_widget_delete_request(self, filename: str):
@@ -139,7 +150,7 @@ class ImportWidget(WidgetTemplate):
         
         self.timeout = True
         index = self._get_idx_of_filename(filename)
-        self.app.imported_files.pop(index)
+        self.imported_parts.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_import_button_text()
         self.timeout = False

@@ -1,19 +1,22 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
 from frontend.utils.style import Style
-from frontend.utils.widget_template import WidgetTemplate
-from frontend.utils.widget_viewer import WidgetViewer
-from frontend.file_widgets.router_file_widget import RouterFileWidget
+from frontend.utils.util_widgets.widget_template import WidgetTemplate
+from frontend.utils.util_widgets.widget_viewer import WidgetViewer
+from frontend.utils.file_widgets.router_file_widget import RouterFileWidget
 
 from backend.utils.router_util import RouterUtil
 
+from config import ROUTER_PREVIEW_DATA_PATH
 
 class RouterWidget(WidgetTemplate):
 
-    def __init__(self):
+    def __init__(self, router_data: list, router_limit: int):
         super().__init__()
 
         self.router_util = RouterUtil(ROUTER_PREVIEW_DATA_PATH)
+        self.router_data = router_data
+        self.router_limit = router_limit
 
         self.__init_gui__()
         self.__init_timeout__()
@@ -23,18 +26,18 @@ class RouterWidget(WidgetTemplate):
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
-        router_widgets = [RouterFileWidget(self.app, self.router_util, router) for router in self.app.router_data]
+        router_widgets = [RouterFileWidget(self.router_util, router) for router in self.router_data]
 
         for widget in router_widgets:
             widget.deleteRequested.connect(self.on_router_delete_requested)
 
-        self.__file_preview_widget = WidgetViewer(self.app, 1, 1, router_widgets) 
+        self.__file_preview_widget = WidgetViewer(1, 1, router_widgets) 
 
         self.__add_new_button_wrapper = QWidget()
         self.__add_new_button_wrapper_layout = QHBoxLayout()
 
         self.__add_new_button = QPushButton()
-        self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.clicked.connect(self.add_new_router)
 
         self.__add_new_button_wrapper_layout.addStretch(2)
@@ -46,7 +49,7 @@ class RouterWidget(WidgetTemplate):
         main_layout.addWidget(self.__add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
-        self.app.apply_stylesheet(main_widget, "light.css")
+        Style.apply_stylesheet(main_widget, "light.css")
 
         self.__init_template_gui__("Configure CNC Router", main_widget)
         self.update_add_button_text()
@@ -55,20 +58,20 @@ class RouterWidget(WidgetTemplate):
         self.timeout = False
 
     def _get_router_amount(self) -> int:
-        return len(self.app.router_data) 
+        return len(self.router_data) 
 
     def add_new_router(self):
         if self.timeout:
             return
 
         self.timeout = True
-        if self._get_router_amount() < self.app.ROUTER_LIMIT:
-            new_router_data = self.router_util.get_new_router(self.app.router_data)
-            self.app.router_data.append(new_router_data)
+        if self._get_router_amount() < self.router_limit:
+            new_router_data = self.router_util.get_new_router(self.router_data)
+            self.router_data.append(new_router_data)
             
             self.router_util.save_router_preview(new_router_data)
 
-            new_router_widget = RouterFileWidget(self.app, self.router_util, new_router_data)
+            new_router_widget = RouterFileWidget(self.router_util, new_router_data)
             new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
 
             self.__file_preview_widget.append_widgets([new_router_widget])
@@ -76,14 +79,14 @@ class RouterWidget(WidgetTemplate):
         self.timeout = False
 
     def update_add_button_text(self):
-        if self._get_router_amount() >= self.app.ROUTER_LIMIT:
-            self.app.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+        if self._get_router_amount() >= self.router_limit:
+            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
         else:
-            self.app.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.app.ROUTER_LIMIT})")
+            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        self.__add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.router_limit})")
 
     def _get_idx_of_filename(self, filename: str):
-        for idx, dict in enumerate(self.app.router_data):
+        for idx, dict in enumerate(self.router_data):
             if dict['filename'] == filename: 
                 return idx
         return -1
@@ -94,8 +97,7 @@ class RouterWidget(WidgetTemplate):
     
         self.timeout = True
         index = self._get_idx_of_filename(filename)
-        self.app.file_processor.delete_file(self.app.router_data[index]['preview_path'])
-        self.app.router_data.pop(index)
+        self.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)
         self.update_add_button_text()
         self.timeout = False

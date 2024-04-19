@@ -21,7 +21,7 @@ class DataManager:
         self.plate_data = self.__get_plate_data__()
 
     def __init_temp_data__(self):
-        self.imported_files = []
+        self.imported_parts = []
 
     def __get_user_preferences__(self) -> dict:
         return self.file_processor.get_json_data(USER_PREFERENCE_FILE_PATH)
