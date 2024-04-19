@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap
 
-from ..utils.style import Style
+from ..utils.style import apply_stylesheet
 
 from ...config import LOGO_PATH
 
@@ -19,7 +19,7 @@ class HomeWidget(QWidget):
         self.__logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.__app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
-        Style.apply_stylesheet(self.__app_description_label, "small-text.css")
+        apply_stylesheet(self.__app_description_label, "small-text.css")
 
         self.__layout.addStretch()
         self.__layout.addWidget(self.__logo_label)

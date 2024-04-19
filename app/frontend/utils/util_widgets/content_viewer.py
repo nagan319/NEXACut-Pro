@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QStackedWidget
 
-from ..style import Style
+from ..style import apply_stylesheet
 
 class ContentViewer(QStackedWidget):
 
@@ -9,7 +9,7 @@ class ContentViewer(QStackedWidget):
 
         self.amt_widgets = len(widgets)
 
-        Style.apply_stylesheet(self, "light.css")
+        apply_stylesheet(self, "light.css")
 
         for widget in widgets:
             self.addWidget(widget)

@@ -2,7 +2,7 @@ import os
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from ..utils.style import Style
+from ..utils.style import apply_stylesheet
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.plate_file_widget import PlateFileWidget
@@ -43,7 +43,7 @@ class InventoryWidget(WidgetTemplate):
         self.__add_new_button_wrapper_layout = QHBoxLayout()
 
         self.__add_new_button = QPushButton()
-        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
+        apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.clicked.connect(self.add_new_plate)
 
         self.__add_new_button_wrapper_layout.addStretch(2)
@@ -55,7 +55,7 @@ class InventoryWidget(WidgetTemplate):
         main_layout.addWidget(self.__add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
-        Style.apply_stylesheet(main_widget, "light.css")
+        apply_stylesheet(main_widget, "light.css")
 
         self.__init_template_gui__("Manage Inventory", main_widget)
         self.update_add_button_text()
@@ -112,9 +112,9 @@ class InventoryWidget(WidgetTemplate):
 
     def update_add_button_text(self):
         if self._get_plate_amount() >= self.plate_limit:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+            apply_stylesheet(self.__add_new_button, "generic-button-red.css")
         else:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
+            apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
 
     def _create_image_edit_window(self, filename: str): # refactor this trash

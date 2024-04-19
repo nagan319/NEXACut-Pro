@@ -1,7 +1,7 @@
 import math
 from PyQt6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout
 
-from ..style import Style
+from ..style import apply_stylesheet
 from .arrow_button import ArrowButton
 
 from ....config import MIN_HEIGHT
@@ -108,7 +108,7 @@ class WidgetViewer(QStackedWidget): # grid view
 
             row_widget = QWidget()
             row_widget.setMinimumHeight(int(MIN_HEIGHT*.8/self.widgets_y)) # get min height
-            Style.apply_stylesheet(row_widget, "light.css")
+            apply_stylesheet(row_widget, "light.css")
             row_widget_layout = QHBoxLayout()
 
             for j in range(self.widgets_x):

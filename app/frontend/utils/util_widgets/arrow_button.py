@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QPushButton
 
-from ..style import Style
+from ..style import apply_stylesheet
 
 class ArrowButton(QPushButton):
 
@@ -10,4 +10,4 @@ class ArrowButton(QPushButton):
             self.setText('>')
         else:
             self.setText('<')
-        Style.apply_stylesheet(self, 'small-button.css')
+        apply_stylesheet(self, 'small-button.css')

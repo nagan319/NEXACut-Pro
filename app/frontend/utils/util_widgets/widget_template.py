@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel
 
-from ..style import Style
+from ..style import apply_stylesheet
 
 class WidgetTemplate(QWidget): 
 
@@ -19,7 +19,7 @@ class WidgetTemplate(QWidget):
         self.__content_layout = QVBoxLayout()
 
         self.__title = QLabel(title_text)
-        Style.apply_stylesheet(self.__title, "title.css")
+        apply_stylesheet(self.__title, "title.css")
         self.__title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.__content_layout.addWidget(self.__title, 1)

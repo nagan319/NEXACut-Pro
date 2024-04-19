@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel
 
-from ..style import Style
+from ..style import apply_stylesheet
 
 from ....backend.utils.input_parser import parse_text
 
@@ -38,7 +38,7 @@ class DataWidget(QWidget):
         if has_name_property:
             name_widget = QLineEdit()
             name_widget.setText(self.data['name'])
-            Style.apply_stylesheet(name_widget, "data-title-input-box.css")
+            apply_stylesheet(name_widget, "data-title-input-box.css")
             name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
             name_widget.editingFinished.connect(lambda box=name_widget: self.on_name_edited(box.text()))
 
@@ -52,11 +52,11 @@ class DataWidget(QWidget):
         button_container_layout = QHBoxLayout()
 
         save_button = QPushButton("Save")
-        Style.apply_stylesheet(save_button, self.button_stylesheet)
+        apply_stylesheet(save_button, self.button_stylesheet)
         save_button.pressed.connect(self.on_save_requested)
 
         delete_button = QPushButton("Delete")
-        Style.apply_stylesheet(delete_button, self.button_stylesheet)
+        apply_stylesheet(delete_button, self.button_stylesheet)
         delete_button.pressed.connect(self.on_delete_requested)
 
         button_container_layout.addStretch(1)
@@ -77,7 +77,7 @@ class DataWidget(QWidget):
         key_label = QLabel()
         key_text = self._edit_key_text(key)
         key_label.setText(key_text)
-        Style.apply_stylesheet(key_label, self.text_stylesheet)
+        apply_stylesheet(key_label, self.text_stylesheet)
 
         value_box = QLineEdit()
         value_box.setText(str(value))
@@ -87,7 +87,7 @@ class DataWidget(QWidget):
             value_box.setPlaceholderText(f"{min_value}-{max_value}")
         else:
             value_box.setPlaceholderText(f"")
-        Style.apply_stylesheet(value_box, "small-input-box.css")
+        apply_stylesheet(value_box, "small-input-box.css")
   
         data_row_layout.addWidget(key_label, self.key_val_ratio[0])
         data_row_layout.addWidget(value_box, self.key_val_ratio[1])

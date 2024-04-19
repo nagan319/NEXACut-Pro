@@ -2,7 +2,7 @@ import os
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
-from ..utils.style import Style
+from ..utils.style import apply_stylesheet
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.stl_file_widget import STLFileWidget
@@ -32,7 +32,7 @@ class ImportWidget(WidgetTemplate):
         self.__import_button_wrapper_layout = QHBoxLayout()
 
         self.__import_button = QPushButton()
-        Style.apply_stylesheet(self.__import_button, "generic-button.css")
+        apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.clicked.connect(self.import_files)
         self.update_import_button_text()
 
@@ -45,7 +45,7 @@ class ImportWidget(WidgetTemplate):
         main_layout.addWidget(self.__import_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
-        Style.apply_stylesheet(main_widget, "light.css")
+        apply_stylesheet(main_widget, "light.css")
 
         self.__init_template_gui__("Import Part Files", main_widget)
 
@@ -134,9 +134,9 @@ class ImportWidget(WidgetTemplate):
 
     def update_import_button_text(self):
         if self._get_total_part_amount() >= self.part_import_limit:
-            Style.apply_stylesheet(self.__import_button, "generic-button-red.css")
+            apply_stylesheet(self.__import_button, "generic-button-red.css")
         else:
-            Style.apply_stylesheet(self.__import_button, "generic-button.css")
+            apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
 
     def on_widget_amt_edited(self, filename: str, value: int): 
