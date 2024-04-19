@@ -3,9 +3,9 @@ import numpy as np
 import cv2
 import traceback
 
-from utils import Size, Colors
-from filters import BinaryFilter, FlatFilter
-from features import FeatDetector, FeatDisplay, FeatEditor
+from .utils import Size, Colors
+from .filters import BinaryFilter, FlatFilter
+from .features import FeatDetector, FeatDisplay, FeatEditor
 
 class ImageConverter:
 
@@ -100,9 +100,3 @@ class ImageConverter:
         flat_filter.save_image()
 
         return True
-
-img_conv = ImageConverter('image5.jpeg', 'image data', 1000, 2000)
-img_conv.save_binary(100)
-img_conv.initialize_features()
-img_conv.save_features()
-img_conv.save_flattened()

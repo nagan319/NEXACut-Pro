@@ -2,14 +2,14 @@ import os
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
-from frontend.utils.style import Style
-from frontend.utils.util_widgets.widget_template import WidgetTemplate
-from frontend.utils.util_widgets.widget_viewer import WidgetViewer
-from frontend.utils.file_widgets.stl_file_widget import STLFileWidget
+from ..utils.style import Style
+from ..utils.util_widgets.widget_template import WidgetTemplate
+from ..utils.util_widgets.widget_viewer import WidgetViewer
+from ..utils.file_widgets.stl_file_widget import STLFileWidget
 
-from backend.utils.stl_parser import STLParser
+from ...backend.utils.stl_parser import STLParser
 
-from config import CAD_PREVIEW_DATA_PATH
+from ...config import CAD_PREVIEW_DATA_PATH
 
 class ImportWidget(WidgetTemplate):
 

@@ -1,13 +1,13 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from frontend.utils.style import Style
-from frontend.utils.util_widgets.widget_template import WidgetTemplate
-from frontend.utils.util_widgets.widget_viewer import WidgetViewer
-from frontend.utils.file_widgets.router_file_widget import RouterFileWidget
+from ..utils.style import Style
+from ..utils.util_widgets.widget_template import WidgetTemplate
+from ..utils.util_widgets.widget_viewer import WidgetViewer
+from ..utils.file_widgets.router_file_widget import RouterFileWidget
 
-from backend.utils.router_util import RouterUtil
+from ...backend.utils.router_util import RouterUtil
 
-from config import ROUTER_PREVIEW_DATA_PATH
+from ...config import ROUTER_PREVIEW_DATA_PATH
 
 class RouterWidget(WidgetTemplate):
 

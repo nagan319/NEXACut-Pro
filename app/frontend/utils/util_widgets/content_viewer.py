@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QStackedWidget
 
-from frontend.utils.style import Style
+from ..style import Style
 
 class ContentViewer(QStackedWidget):
 

@@ -1,7 +1,5 @@
 import atexit
-from backend.utils.file_operations import FileProcessor
-
-from app.config import USER_PREFERENCE_FILE_PATH, PLATE_DATA_FOLDER_PATH, ROUTER_DATA_FOLDER_PATH, CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH
+from .utils.file_operations import FileProcessor
 
 class DataManager:
 
@@ -9,7 +7,14 @@ class DataManager:
     ROUTER_LIMIT = 10
     PLATE_LIMIT = 50
 
-    def __init__(self):
+    def __init__(self, user_pref_path: str, router_data_path: str, plate_data_path: str, cad_preview_path: str, img_data_path: str):
+
+        self.USER_PREFERENCE_FILE_PATH = user_pref_path
+        self.ROUTER_DATA_FOLDER_PATH = router_data_path
+        self.PLATE_DATA_FOLDER_PATH = plate_data_path
+        self.CAD_PREVIEW_DATA_PATH = cad_preview_path
+        self.IMAGE_PREVIEW_DATA_PATH = img_data_path
+
         self.file_processor = FileProcessor()
         self.__init_long_term_data__()
         self.__init_temp_data__()
@@ -24,13 +29,13 @@ class DataManager:
         self.imported_parts = []
 
     def __get_user_preferences__(self) -> dict:
-        return self.file_processor.get_json_data(USER_PREFERENCE_FILE_PATH)
+        return self.file_processor.get_json_data(self.USER_PREFERENCE_FILE_PATH)
     
     def __get_router_data__(self) -> dict:
-        return self.file_processor.get_all_json_in_folder(ROUTER_DATA_FOLDER_PATH)
+        return self.file_processor.get_all_json_in_folder(self.ROUTER_DATA_FOLDER_PATH)
 
     def __get_plate_data__(self) -> dict:
-        return self.file_processor.get_all_json_in_folder(PLATE_DATA_FOLDER_PATH)
+        return self.file_processor.get_all_json_in_folder(self.PLATE_DATA_FOLDER_PATH)
 
     def __atexit__(self):
         self.__save_user_preferences__()
@@ -38,14 +43,14 @@ class DataManager:
         self.__save_plate_data__()
 
     def __save_user_preferences__(self):
-        self.file_processor.save_json(USER_PREFERENCE_FILE_PATH, self.user_preferences)
+        self.file_processor.save_json(self.USER_PREFERENCE_FILE_PATH, self.user_preferences)
     
     def __save_router_data__(self): 
-        self.file_processor.save_all_json_to_folder(self.router_data, ROUTER_DATA_FOLDER_PATH)
+        self.file_processor.save_all_json_to_folder(self.router_data, self.ROUTER_DATA_FOLDER_PATH)
     
     def __save_plate_data__(self):
-        self.file_processor.save_all_json_to_folder(self.plate_data, PLATE_DATA_FOLDER_PATH)
+        self.file_processor.save_all_json_to_folder(self.plate_data, self.PLATE_DATA_FOLDER_PATH)
     
     def __clear_temporary_data__(self):
-        for folder in [CAD_PREVIEW_DATA_PATH, IMAGE_PREVIEW_DATA_PATH]:
+        for folder in [self.CAD_PREVIEW_DATA_PATH, self.IMAGE_PREVIEW_DATA_PATH]:
             self.file_processor.clear_folder_contents(folder)

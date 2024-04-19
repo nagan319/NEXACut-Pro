@@ -13,7 +13,6 @@ General:
 - add config.ini file 
 
 REFACTORING:
-- integrate 'parse text' function (data widget)
 - store plate/router data using custom objects
 - make image widgets work
 - better manage preview file deletion

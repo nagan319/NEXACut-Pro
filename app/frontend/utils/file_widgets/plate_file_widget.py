@@ -1,11 +1,11 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from utils.style import Style
-from app.frontend.utils.util_widgets.preview_widget import PreviewWidget
-from util_widgets.data_widget import DataWidget
+from ..style import Style
+from ..util_widgets.preview_widget import PreviewWidget
+from ..util_widgets.data_widget import DataWidget
 
-from backend.utils.plate_util import PlateUtil
+from ....backend.utils.plate_util import PlateUtil
 
 class PlateFileWidget(QWidget):
 

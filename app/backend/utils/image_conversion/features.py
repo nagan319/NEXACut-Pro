@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from utils import Size, Colors
+from .utils import Size, Colors
 
 class Features:
     def __init__(self, plate_contour=None, other_contours=None, corners=None, selected_contour=None, selected_corner=None):

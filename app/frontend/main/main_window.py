@@ -1,17 +1,17 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 from PyQt6.QtGui import QFontDatabase
 
-from frontend.utils.util_widgets.menu_widget import Menu
-from frontend.utils.util_widgets.content_viewer import ContentViewer
+from ..utils.util_widgets.menu_widget import Menu
+from ..utils.util_widgets.content_viewer import ContentViewer
 
-from frontend.views.home_widget import HomeWidget
-from frontend.views.import_widget import ImportWidget
-from frontend.views.router_widget import RouterWidget
-from frontend.views.inventory_widget import InventoryWidget
+from ..views.home_widget import HomeWidget
+from ..views.import_widget import ImportWidget
+from ..views.router_widget import RouterWidget
+from ..views.inventory_widget import InventoryWidget
 
-from backend.data_mgr import DataManager
+from ...backend.data_mgr import DataManager
 
-from app.config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
+from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
 
 class MainWindow(QMainWindow):
 

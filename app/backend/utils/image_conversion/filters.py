@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from utils import Size, Colors
+from .utils import Size, Colors
 
 class BinaryFilter:
 

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton
 
-from frontend.utils.style import Style
+from ..style import Style
 
 class Menu(QWidget):
 

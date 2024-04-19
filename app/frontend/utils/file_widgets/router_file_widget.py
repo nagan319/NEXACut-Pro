@@ -1,10 +1,10 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QHBoxLayout
 
-from util_widgets.data_widget import DataWidget
-from app.frontend.utils.util_widgets.preview_widget import PreviewWidget
+from ..util_widgets.data_widget import DataWidget
+from ...utils.util_widgets.preview_widget import PreviewWidget
 
-from backend.utils.router_util import RouterUtil
+from ....backend.utils.router_util import RouterUtil
 
 class RouterFileWidget(QWidget): 
     

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel
 
-from style import Style
+from ..style import Style
 
 class WidgetTemplate(QWidget): 
 

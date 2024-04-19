@@ -1,6 +1,6 @@
-from style import Style
-
 from PyQt6.QtWidgets import QPushButton
+
+from ..style import Style
 
 class ArrowButton(QPushButton):
 

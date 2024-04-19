@@ -1,9 +1,9 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel
 
-from style import Style
+from ..style import Style
 
-from app.backend.utils.input_parser import parse_text
+from ....backend.utils.input_parser import parse_text
 
 class DataWidget(QWidget):
 

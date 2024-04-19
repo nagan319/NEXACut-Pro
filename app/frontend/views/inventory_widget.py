@@ -2,15 +2,15 @@ import os
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from frontend.utils.style import Style
-from frontend.utils.util_widgets.widget_template import WidgetTemplate
-from frontend.utils.util_widgets.widget_viewer import WidgetViewer
-from frontend.utils.file_widgets.plate_file_widget import PlateFileWidget
+from ..utils.style import Style
+from ..utils.util_widgets.widget_template import WidgetTemplate
+from ..utils.util_widgets.widget_viewer import WidgetViewer
+from ..utils.file_widgets.plate_file_widget import PlateFileWidget
 
-from backend.utils.plate_util import PlateUtil
-from backend.utils.image_conversion.image_converter import ImageConverter
+from ...backend.utils.plate_util import PlateUtil
+from ...backend.utils.image_conversion.image_converter import ImageConverter
 
-from config import IMAGE_PREVIEW_DATA_PATH, PLATE_DATA_PREVIEW_FOLDER_PATH
+from ...config import IMAGE_PREVIEW_DATA_PATH, PLATE_DATA_PREVIEW_FOLDER_PATH
 
 class InventoryWidget(WidgetTemplate):
 
@@ -124,8 +124,8 @@ class InventoryWidget(WidgetTemplate):
 
         self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_dimensions)
 
-        self.image_editor = ImageEditorWindow(self.image_converter) 
-        self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
+        # self.image_editor = ImageEditorWindow(self.image_converter) 
+        # self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
 
     def on_image_editor_closed(self):
         self.image_editor_active = False

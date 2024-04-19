@@ -2,9 +2,9 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap
 
-from utils.style import Style
+from ..utils.style import Style
 
-from config import LOGO_PATH
+from ...config import LOGO_PATH
 
 class HomeWidget(QWidget):
     def __init__(self):

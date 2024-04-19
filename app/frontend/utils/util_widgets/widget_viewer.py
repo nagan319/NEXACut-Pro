@@ -1,10 +1,10 @@
 import math
 from PyQt6.QtWidgets import QWidget, QStackedWidget, QHBoxLayout, QVBoxLayout
 
-from style import Style
-from arrow_button import ArrowButton
+from ..style import Style
+from .arrow_button import ArrowButton
 
-from config import MIN_HEIGHT
+from ....config import MIN_HEIGHT
 
 class WidgetViewer(QStackedWidget): # grid view
 
