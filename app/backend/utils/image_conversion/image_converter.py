@@ -105,3 +105,8 @@ class ImageConverter:
         flat_filter.save_image()
 
         return True
+    
+    def get_finalized_contours(self) -> list:
+        flat_image = cv2.imread(self.flat_path, cv2.IMREAD_GRAYSCALE)
+        contours = cv2.findContours(flat_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        return contours

@@ -113,8 +113,25 @@ class InventoryWidget(WidgetTemplate):
         plate_idx = self._get_idx_of_filename(filename)
         plate_w = self.plate_data[plate_idx]['width_(x)'] 
         plate_h = self.plate_data[plate_idx]['height_(y)']
-        self.image_editor = ImageEditorWindow(plate_w, plate_h) 
+        self.image_editor = ImageEditorWindow(filename, plate_w, plate_h) 
         self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
 
-    def on_image_editor_closed(self):
+    def on_image_editor_closed(self, filename: str, contours: list):
         self.image_editor_active = False
+
+'''
+    def _serialize_plate_ctrs(self, contours: list): # figure out how to deal with this - write separate module if necessary
+        serialized = []
+        for contour in contours[0]:
+            points = contour.tolist()
+            serialized.append(points)
+        return serialized
+
+    def on_image_editor_closed(self, filename: str, contours: list): 
+        plate_idx = self._get_idx_of_filename(filename)
+        contours = self._serialize_plate_ctrs(contours)
+        self.plate_data[plate_idx]['contours'] = self._serialize_plate_ctrs(contours)
+        self.plate_util.save_preview_image(self.plate_data[plate_idx])
+        self.__file_preview_widget.update_view()
+        self.image_editor_active = False
+        '''
