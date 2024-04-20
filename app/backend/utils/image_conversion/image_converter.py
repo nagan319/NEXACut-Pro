@@ -81,12 +81,11 @@ class ImageConverter:
         feature_display = FeatDisplay(self.feat_path, self.img_size, self.features, Colors())
         feature_display.save_features()
     
-    def on_mouse_clicked(self, coordinates: tuple, add_mode: bool) -> bool:
-        if add_mode:
-            self.feature_editor.add_corner(coordinates)
-            return True
-        
-        return self.feature_editor.on_mouse_clicked(coordinates)
+    def corner_added(self, coordinates: tuple):
+        self.feature_editor.add_corner(coordinates)    
+
+    def feature_selected(self, coordinates: tuple) -> bool:
+        return self.feature_editor.feature_selected(coordinates)
 
     def _valid_features(self) -> bool:
         if len(self.features.corners) != 4:

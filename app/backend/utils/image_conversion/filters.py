@@ -34,7 +34,7 @@ class BinaryFilter:
 
 class FlatFilter:
 
-    COLOR_DELETION_THRESHOLD = 32
+    COLOR_DELETION_THRESHOLD = 30
 
     def __init__(self, src_path: str, dst_path: str, size: Size, corners: list):
 
@@ -42,6 +42,7 @@ class FlatFilter:
         self.dst_path = dst_path
 
         self.size = size
+        self.EDGE_THRESHOLD = min(size.w, size.h)//25
 
         self.src_corners = self._sort_corners(corners)
         self.dst_corners = self._get_rect_corners(self.size)
@@ -77,27 +78,27 @@ class FlatFilter:
         dst_pts = np.array(dst_pts, dtype=np.float32)
         return cv2.getPerspectiveTransform(src_pts, dst_pts)
 
-    def _apply_color_mask(self, image, colors: Colors):  # finish editing this
-        epsilon = self.COLOR_DELETION_THRESHOLD
+    def _remove_edge_ctr(self, image, colors: Colors):
 
-        background_min = np.clip(np.array(colors.background_color) - epsilon, 0, 255)
-        background_max = np.clip(np.array(colors.background_color) + epsilon, 0, 255)
+        edge_width = self.EDGE_THRESHOLD
 
-        contour_min = np.clip(np.array(colors.contour_color) - epsilon, 0, 255)
-        contour_max = np.clip(np.array(colors.contour_color) + epsilon, 0, 255)
+        height, width = image.shape[:2]
 
-        mask_background = cv2.inRange(image, background_min, background_max)
-        mask_contour = cv2.inRange(image, contour_min, contour_max)
+        mask = np.zeros((height, width), dtype=np.uint8)
+        mask[:edge_width, :] = 255  
+        mask[-edge_width:, :] = 255  
+        mask[:, :edge_width] = 255  
+        mask[:, -edge_width:] = 255  
 
-        combined_mask = cv2.bitwise_or(mask_background, mask_contour)
-        final_image = cv2.bitwise_and(image, image, mask=combined_mask)
+        result_image = image.copy() 
+        result_image[mask != 0] = colors.background_color
 
-        return final_image
+        return result_image
 
     def save_image(self):
         transformation_matrix = self._get_transformation_matrix(self.src_corners, self.dst_corners)
         image: np.ndarray = cv2.imread(self.src_path, cv2.IMREAD_COLOR)
         image = cv2.warpPerspective(image, transformation_matrix, (self.size.w, self.size.h))
-        image = self._apply_color_mask(image, Colors())
+        image = self._remove_edge_ctr(image, Colors())
         cv2.imwrite(self.dst_path, image)
      

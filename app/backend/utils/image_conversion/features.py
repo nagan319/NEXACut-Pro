@@ -196,7 +196,7 @@ class FeatEditor:
         new_corner = (x_scaled, y_scaled)
         self.features.corners.append(new_corner)
 
-    def on_mouse_clicked(self, coordinates: tuple) -> bool:
+    def feature_selected(self, coordinates: tuple) -> bool:
 
         MIN_DISTANCE = 20
         

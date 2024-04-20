@@ -29,6 +29,8 @@ class ImageEditorWindow(QMainWindow):
         self.__layout.setSpacing(0)
 
         self.image_editor = ImageEditorWidget(self.image_converter, self.PIXMAP_HEIGHT)
+        self.image_editor.editingFinished.connect(self.close)
+        
         self.__layout.addWidget(self.image_editor)
         self.__main_widget = QWidget()
         self.__main_widget.setLayout(self.__layout)

@@ -1,9 +1,9 @@
 {
     "filename": "PLATE-0.json",
     "preview_path": "c:\\Users\\Caco Cola\\Desktop\\NEXACut Pro\\app\\data\\permanent\\plate_preview_data\\PLATE-0.png",
-    "width_(x)": 2000,
-    "height_(y)": 1943.1,
-    "thickness_(z)": 14,
+    "width_(x)": 1000,
+    "height_(y)": 2000,
+    "thickness_(z)": 10,
     "material": "Aluminum",
     "contours": null
 }

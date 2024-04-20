@@ -13,7 +13,7 @@ class Colors:
     'background_color': (255, 255, 255),
     'contour_color': (0, 0, 0),
     'selected_element_color': (0, 0, 255),
-    'plate_edge_color': (0, 0, 0),
+    'plate_edge_color': (55, 55, 55),
     'corner_color': (255, 0, 0)
     }
 
