@@ -4,6 +4,8 @@ from PyQt6.QtGui import QPixmap
 
 from ..style import apply_stylesheet
 
+from ..util_widgets.interactive_preview import InteractivePreview
+
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
 class ImageFeatureWidget(QWidget):
@@ -24,7 +26,7 @@ class ImageFeatureWidget(QWidget):
         self.main_widget = QWidget()
         self.main_layout = QVBoxLayout()
 
-        self.preview_widget = QLabel()
+        self.preview_widget = InteractivePreview()
         self.preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.save_button_widget = self._get_save_button_widget()
