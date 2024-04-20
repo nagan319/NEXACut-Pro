@@ -15,11 +15,12 @@ class ImageThresholdWidget(QWidget):
     COLOR_MAX = 255
     COLOR_MID = (COLOR_MIN + COLOR_MAX)//2
 
-    def __init__(self, image_converter_instance: ImageConverter):
+    def __init__(self, image_converter_instance: ImageConverter, pixmap_height: int):
         super().__init__()
 
         self.image_converter = image_converter_instance
-        
+        self.pixmap_height = pixmap_height
+
         self.threshold = self.COLOR_MID
 
         self.__init_gui__()
@@ -81,7 +82,7 @@ class ImageThresholdWidget(QWidget):
     def update_preview(self):
         self.image_converter.save_binary(self.threshold)
         pixmap = QPixmap(self.image_converter.bin_path)
-        scaled_pixmap = pixmap.scaledToHeight(600)
+        scaled_pixmap = pixmap.scaledToHeight(self.pixmap_height)
         self.preview_widget.setPixmap(scaled_pixmap)
     
     def on_threshold_parameter_edited(self, value: int):

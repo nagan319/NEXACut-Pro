@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import cv2
 
@@ -154,8 +155,10 @@ class FeatDisplay:
 
 class FeatEditor:
 
-    def __init__(self, size: Size, features: Features):
+    def __init__(self, size: Size, features: Features, pixmap_height: int):
         self.size = size
+        self.pixmap_height = pixmap_height
+        self.pixmap_scale_factor = pixmap_height/self.size.h
         self.features = features
 
     def select_corner(self, n: int):
@@ -183,11 +186,44 @@ class FeatEditor:
         self.unselect_contour()
 
     def add_corner(self, coordinates: tuple):
-        x, y = coordinates  
 
-        if not (0 <= x < self.size.w) or not (0 <= y < self.size.h):
+        x, y = coordinates  
+        x_scaled, y_scaled = int(x/self.pixmap_scale_factor), int(y/self.pixmap_scale_factor)
+
+        if not (0 <= x_scaled < self.size.w) or not (0 <= y_scaled < self.size.h):
             return
             
-        new_corner = (x, y)
+        new_corner = (x_scaled, y_scaled)
         self.features.corners.append(new_corner)
-            
+
+    def on_mouse_clicked(self, coordinates: tuple) -> bool:
+
+        MIN_DISTANCE = 20
+        
+        for i, contour in enumerate(self.features.other_contours):
+
+            for point in contour[::int(MIN_DISTANCE*2)]:
+    
+                point_scaled = (point[0][0]*self.pixmap_scale_factor, point[0][1]*self.pixmap_scale_factor)
+
+                if self._is_close(coordinates, point_scaled, MIN_DISTANCE):
+                    self.unselect_corner()
+                    self.select_contour(i)
+                    return True
+                
+        for i, corner in enumerate(self.features.corners):
+
+            corner_scaled = (coordinate * self.pixmap_scale_factor for coordinate in corner)
+
+            if self._is_close(coordinates, corner_scaled, MIN_DISTANCE):
+                self.unselect_contour()
+                self.select_corner(i)
+                return True
+        
+        return False
+    
+    def _is_close(self, point_1: tuple, point_2: tuple, threshold: int):
+        x1, y1 = point_1
+        x2, y2 = point_2
+        distance = math.sqrt(abs(x2 - x1)**2 + abs(y2 - y1)**2)
+        return distance <= threshold

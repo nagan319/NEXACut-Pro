@@ -19,7 +19,7 @@ class ImageConverter:
 
     OUTPUT_RES = 4 # pixels/mm
 
-    def __init__(self, data_folder_path: str, plate_w: float, plate_h: float):
+    def __init__(self, data_folder_path: str, plate_w: float, plate_h: float, pixmap_height: int):
         
         if not os.path.exists(data_folder_path):
             raise FileNotFoundError("Indicated preview folder path does not exist")
@@ -31,6 +31,7 @@ class ImageConverter:
         self.__init_paths__()
 
         self.plate_size = Size(plate_w, plate_h)
+        self.pixmap_height = pixmap_height
     
     def __init_src_path__(self, path: str):
         self.src_img_path = path
@@ -74,12 +75,19 @@ class ImageConverter:
 
     def initialize_features(self):
         self.__init_features__()
-        self.feature_editor = FeatEditor(self.img_size, self.features)
+        self.feature_editor = FeatEditor(self.img_size, self.features, self.pixmap_height)
 
     def save_features(self):
         feature_display = FeatDisplay(self.feat_path, self.img_size, self.features, Colors())
         feature_display.save_features()
     
+    def on_mouse_clicked(self, coordinates: tuple, add_mode: bool) -> bool:
+        if add_mode:
+            self.feature_editor.add_corner(coordinates)
+            return True
+        
+        return self.feature_editor.on_mouse_clicked(coordinates)
+
     def _valid_features(self) -> bool:
         if len(self.features.corners) != 4:
             return False

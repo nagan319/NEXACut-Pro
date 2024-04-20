@@ -12,12 +12,14 @@ class ImageEditorWindow(QMainWindow):
     MIN_WIDTH = 800
     WINDOW_TITLE = 'Attach Image File'
  
+    PIXMAP_HEIGHT = 600
+
     imageEditorClosed = pyqtSignal()
 
     def __init__(self, plate_w: float, plate_h: float):
         super().__init__()
 
-        self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_w, plate_h)
+        self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_w, plate_h, self.PIXMAP_HEIGHT)
 
         self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
         self.setWindowTitle(self.WINDOW_TITLE)
@@ -26,7 +28,7 @@ class ImageEditorWindow(QMainWindow):
         self.__layout.setContentsMargins(0, 0, 0, 0) 
         self.__layout.setSpacing(0)
 
-        self.image_editor = ImageEditorWidget(self.image_converter)
+        self.image_editor = ImageEditorWidget(self.image_converter, self.PIXMAP_HEIGHT)
         self.__layout.addWidget(self.image_editor)
         self.__main_widget = QWidget()
         self.__main_widget.setLayout(self.__layout)
