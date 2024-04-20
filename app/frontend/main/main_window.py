@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QWidget
+from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 from PyQt6.QtGui import QFontDatabase, QFont
 
 from ..utils.util_widgets.menu_widget import Menu

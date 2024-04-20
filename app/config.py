@@ -13,7 +13,7 @@ RESOURCES_FOLDER = 'resources'
 FONT_FOLDER = 'fonts'
 IMAGES_FOLDER = 'images'
 STYLESHEET_FOLDER = 'stylesheets'
-MAIN_FONT = 'Tajawal-Regular.tff'
+MAIN_FONT = 'Tajawal-Regular.ttf'
 LOGO_IMAGE = 'NEXACut Logo.png'
 
 # data paths

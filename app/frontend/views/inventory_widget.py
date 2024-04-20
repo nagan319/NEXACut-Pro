@@ -5,12 +5,13 @@ from ..utils.style import apply_stylesheet
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.plate_file_widget import PlateFileWidget
+from ..utils.image_widgets.image_editor_window import ImageEditorWindow
 
 from ...backend.utils.plate_util import PlateUtil
 from ...backend.utils.image_conversion.image_converter import ImageConverter
 from ...backend.utils.file_operations import FileProcessor
 
-from ...config import IMAGE_PREVIEW_DATA_PATH, PLATE_PREVIEW_DATA_PATH
+from ...config import PLATE_PREVIEW_DATA_PATH
 
 class InventoryWidget(WidgetTemplate):
 
@@ -107,15 +108,13 @@ class InventoryWidget(WidgetTemplate):
             apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
 
-    def _create_image_edit_window(self, filename: str): # refactor this trash
+    def _create_image_edit_window(self, filename: str): 
         
         plate_idx = self._get_idx_of_filename(filename)
-        plate_dimensions = tuple([self.plate_data[plate_idx][key] for key in ['width_(x)', 'height_(y)', 'thickness_(z)']])
-
-        self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_dimensions)
-
-        # self.image_editor = ImageEditorWindow(self.image_converter) 
-        # self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
+        plate_w = self.plate_data[plate_idx]['width_(x)'] 
+        plate_h = self.plate_data[plate_idx]['height_(y)']
+        self.image_editor = ImageEditorWindow(plate_w, plate_h) 
+        self.image_editor.imageEditorClosed.connect(self.on_image_editor_closed)
 
     def on_image_editor_closed(self):
         self.image_editor_active = False

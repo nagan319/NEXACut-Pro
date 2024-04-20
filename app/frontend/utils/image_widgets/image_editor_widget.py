@@ -1,12 +1,12 @@
 from PyQt6.QtWidgets import QStackedWidget
 
-from style import apply_stylesheet
+from ..style import apply_stylesheet
 
-from image_load_widget import ImageLoadWidget
-from image_threshold_widget import ImageThresholdWidget
-from image_feature_widget import ImageFeatureWidget
+from .image_load_widget import ImageLoadWidget
+from .image_threshold_widget import ImageThresholdWidget
+from .image_feature_widget import ImageFeatureWidget
 
-from backend.utils.image_conversion.image_converter import ImageConverter
+from ....backend.utils.image_conversion.image_converter import ImageConverter
 
 class ImageEditorWidget(QStackedWidget):
 
@@ -21,15 +21,13 @@ class ImageEditorWidget(QStackedWidget):
 
         self.setCurrentIndex(0)
 
-        params = (self.app, self.image_converter)
-
-        self.image_load_widget = ImageLoadWidget(*params)
+        self.image_load_widget = ImageLoadWidget(self.image_converter)
         self.image_load_widget.imageImported.connect(self.on_image_imported)
 
-        self.image_threshold_widget = ImageThresholdWidget(*params)
+        self.image_threshold_widget = ImageThresholdWidget(self.image_converter)
         self.image_threshold_widget.binaryFinalized.connect(self.on_binary_finalized)
 
-        self.image_feature_widget = ImageFeatureWidget(*params)
+        self.image_feature_widget = ImageFeatureWidget(self.image_converter)
         self.image_feature_widget.featuresFinalized.connect(self.on_features_finalized)
 
         for widget in [
@@ -44,7 +42,8 @@ class ImageEditorWidget(QStackedWidget):
     
     def on_binary_finalized(self):
         self.setCurrentIndex(2)
-        self.image_converter.get_contours_from_binary()
+        self.image_converter.initialize_features()
+        self.image_converter.save_features()
         self.image_feature_widget.update_preview()
 
     def on_features_finalized(self):

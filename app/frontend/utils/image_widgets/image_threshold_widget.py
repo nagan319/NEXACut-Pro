@@ -1,9 +1,10 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
+from PyQt6.QtGui import QPixmap
 
-from utils.style import apply_stylesheet
+from ..style import apply_stylesheet
 
-from backend.utils.image_conversion.image_converter import ImageConverter
+from ....backend.utils.image_conversion.image_converter import ImageConverter
 
 
 class ImageThresholdWidget(QWidget):
@@ -71,12 +72,11 @@ class ImageThresholdWidget(QWidget):
         self.setLayout(self.layout_with_margins)
 
     def _generate_binary(self):
-        self.image_converter.save_binary_image(self.threshold)
+        self.image_converter.save_binary(self.threshold)
 
     def update_preview(self):
         self._generate_binary()
-        binary_path = os.path.join(IMAGE_PREVIEW_DATA_PATH, BINARY_EXTENSION)
-        pixmap = QPixmap(binary_path)
+        pixmap = QPixmap(self.image_converter.bin_path)
         scaled_pixmap = pixmap.scaledToHeight(600)
         self.preview_widget.setPixmap(scaled_pixmap)
     

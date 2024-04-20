@@ -4,18 +4,20 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout
 from .image_editor_widget import ImageEditorWidget
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
+from ....config import IMAGE_PREVIEW_DATA_PATH
+
 class ImageEditorWindow(QMainWindow):
     
     MIN_HEIGHT = 800
     MIN_WIDTH = 800
     WINDOW_TITLE = 'Attach Image File'
-
+ 
     imageEditorClosed = pyqtSignal()
 
-    def __init__(self, image_converter_instance: ImageConverter):
+    def __init__(self, plate_w: float, plate_h: float):
         super().__init__()
 
-        self.image_converter = image_converter_instance
+        self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_w, plate_h)
 
         self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
         self.setWindowTitle(self.WINDOW_TITLE)

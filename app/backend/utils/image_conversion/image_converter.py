@@ -19,10 +19,7 @@ class ImageConverter:
 
     OUTPUT_RES = 4 # pixels/mm
 
-    def __init__(self, src_path: str, data_folder_path: str, plate_w: float, plate_h: float):
-        
-        if not os.path.exists(src_path):
-            raise FileNotFoundError("Indicated image file does not exist")
+    def __init__(self, data_folder_path: str, plate_w: float, plate_h: float):
         
         if not os.path.exists(data_folder_path):
             raise FileNotFoundError("Indicated preview folder path does not exist")
@@ -30,14 +27,15 @@ class ImageConverter:
         if plate_w <= 0 or plate_h <= 0:
             raise ValueError("Invalid plate dimensions")
 
-        self.src_img_path = src_path
         self.data_folder = data_folder_path
         self.__init_paths__()
 
         self.plate_size = Size(plate_w, plate_h)
-
-        self._save_raw()
     
+    def __init_src_path__(self, path: str):
+        self.src_img_path = path
+        self._save_raw()
+
     def __init_paths__(self):
         self.raw_path = os.path.join(self.data_folder, self.RAW_NAME)
         self.bin_path = os.path.join(self.data_folder, self.BIN_NAME)

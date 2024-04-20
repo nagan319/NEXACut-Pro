@@ -3,7 +3,6 @@ Title widget:
 
 Stock widget:
 - add parameter to avoid unit conversion etc. for string fields
-- fix featureManager for invalid images (no features)
 
 Grid view widget:
 - add button cooldown for deletion/addition
@@ -13,6 +12,4 @@ General:
 - add config.ini file 
 
 REFACTORING:
-- figure out font import issue
 - store plate/router data using custom objects
-- make image widgets work

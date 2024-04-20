@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtGui import QPixmap
 
-from ...utils.style import apply_stylesheet
+from ..style import apply_stylesheet
 
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
@@ -49,12 +49,11 @@ class ImageFeatureWidget(QWidget):
         self.setLayout(self.layout_with_margins)
 
     def _generate_contour_img(self):
-        self.image_converter.save_contour_image()
+        self.image_converter.save_features()
 
     def update_preview(self):
         self._generate_contour_img()
-        contour_path = os.path.join(IMAGE_PREVIEW_DATA_PATH, CONTOUR_EXTENSION)
-        pixmap = QPixmap(contour_path)
+        pixmap = QPixmap(self.image_converter.feat_path)
         scaled_pixmap = pixmap.scaledToHeight(600)
         self.preview_widget.setPixmap(scaled_pixmap)
 

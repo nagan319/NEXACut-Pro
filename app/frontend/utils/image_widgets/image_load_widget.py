@@ -1,9 +1,9 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
-from utils.style import apply_stylesheet
+from ..style import apply_stylesheet
 
-from backend.utils.image_conversion.image_converter import ImageConverter
+from ....backend.utils.image_conversion.image_converter import ImageConverter
 
 class ImageLoadWidget(QWidget):
 
@@ -39,5 +39,5 @@ class ImageLoadWidget(QWidget):
     def import_image_file(self):
  
         file_path, _ = QFileDialog.getOpenFileName(self, "Select File", "", self.SUPPORTED_IMAGE_FORMATS)
-        self.image_converter.save_external_image_as_raw(file_path)
+        self.image_converter.__init_src_path__(file_path)
         self.imageImported.emit()
