@@ -27,19 +27,10 @@ class ImageFeatureWidget(QWidget):
         self.preview_widget = QLabel()
         self.preview_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.save_button_wrapper = QWidget()
-        self.save_button_wrapper_layout = QHBoxLayout()
-        self.save_button = QPushButton("Save Features")
-        self.save_button.pressed.connect(self.on_save_button_pressed)
-        apply_stylesheet(self.save_button, 'small-button.css')
-
-        self.save_button_wrapper_layout.addStretch(2)
-        self.save_button_wrapper_layout.addWidget(self.save_button, 1)
-        self.save_button_wrapper_layout.addStretch(2)
-        self.save_button_wrapper.setLayout(self.save_button_wrapper_layout)
+        self.save_button_widget = self._get_save_button_widget()
 
         self.main_layout.addWidget(self.preview_widget, 3)
-        self.main_layout.addWidget(self.save_button_wrapper, 0)
+        self.main_layout.addWidget(self.save_button_widget, 0)
         self.main_widget.setLayout(self.main_layout)
 
         self.layout_with_margins.addStretch(1)
@@ -48,11 +39,22 @@ class ImageFeatureWidget(QWidget):
 
         self.setLayout(self.layout_with_margins)
 
-    def _generate_contour_img(self):
-        self.image_converter.save_features()
+    def _get_save_button_widget(self) -> QWidget:
+        save_button_wrapper = QWidget()
+        save_button_wrapper_layout = QHBoxLayout()
+        save_button = QPushButton("Save Features")
+        save_button.pressed.connect(self.on_save_button_pressed)
+        apply_stylesheet(save_button, 'small-button.css')
+
+        save_button_wrapper_layout.addStretch(2)
+        save_button_wrapper_layout.addWidget(save_button, 1)
+        save_button_wrapper_layout.addStretch(2)
+        save_button_wrapper.setLayout(save_button_wrapper_layout)
+
+        return save_button_wrapper
 
     def update_preview(self):
-        self._generate_contour_img()
+        self.image_converter.save_features()
         pixmap = QPixmap(self.image_converter.feat_path)
         scaled_pixmap = pixmap.scaledToHeight(600)
         self.preview_widget.setPixmap(scaled_pixmap)

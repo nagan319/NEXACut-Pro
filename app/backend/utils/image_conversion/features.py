@@ -129,22 +129,22 @@ class FeatDisplay:
         canvas[:, :] = list(self.colors.background_color)
 
         if self.features.plate_contour is not None:
-            cv2.drawContours(canvas, self.features.plate_contour, -1, self.colors.plate_color, thickness=4)
+            cv2.drawContours(canvas, self.features.plate_contour, -1, self.colors.plate_color, thickness=8)
 
         if self.features.other_contours is not None:
-            cv2.drawContours(canvas, self.features.other_contours, -1, self.colors.contour_color, thickness=4)
+            cv2.drawContours(canvas, self.features.other_contours, -1, self.colors.contour_color, thickness=8)
 
         if self.features.selected_contour is not None:
-            cv2.drawContours(canvas, self.features.other_contours, self.features.selected_contour, self.colors.selected_element_color, thickness=6)
+            cv2.drawContours(canvas, self.features.other_contours, self.features.selected_contour, self.colors.selected_element_color, thickness=12)
 
         for i, corner in enumerate(self.features.corners):
 
             if i == self.features.selected_corner:
                 color = self.colors.selected_element_color
-                thickness = 6
+                thickness = 12
             else:
                 color = self.colors.corner_color
-                thickness = 2
+                thickness = 8
 
             cv2.circle(canvas, corner, radius=32, color=color, thickness=thickness)
         
