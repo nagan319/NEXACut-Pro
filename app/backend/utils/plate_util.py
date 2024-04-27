@@ -1,7 +1,6 @@
 import os
+import numpy as np
 import matplotlib.pyplot as plt
-
-# create generic class to combine with RouterUtil, functionality very similar
 
 class PlateUtil:
 
@@ -77,7 +76,8 @@ class PlateUtil:
         filename_no_extension = os.path.splitext(plate_filename)[0]
         preview_path = os.path.join(self.plate_preview_folder_path, filename_no_extension+'.png')
         return preview_path
-    
+
+
     def save_preview_image(self, plate_data: dict, figsize: tuple = (4, 4), dpi: int = 80):
 
         try: 
@@ -94,12 +94,12 @@ class PlateUtil:
         
         plt.plot(plate_rect_x, plate_rect_y, color = self.plot_line_color)
 
-        if image_contours is not None:    
-            for contour in enumerate(image_contours):
-                x_vals = contour[:, 0]
-                y_vals=  contour[:, 1] 
-                plt.plot(x_vals, y_vals, color = self.plot_line_color)
- 
+        if image_contours is not None:
+            for contour in image_contours:
+                contour_array = np.array(contour)
+                x_coords, y_coords = contour_array[:, 0, 0], contour_array[:, 0, 1]
+                plt.plot(x_coords, y_coords, color=self.plot_line_color, linewidth=1)
+
         plt.grid(True)
         plt.gca().set_facecolor(self.plot_bg_color) # bg color
         plt.gca().set_aspect('equal') 
@@ -114,18 +114,9 @@ class PlateUtil:
 
         plt.savefig(image_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
 
+
     def _generate_rectangle_coordinates(self, width, height, offset_x=0, offset_y=0):
 
         x_coordinates = [offset_x, offset_x + width, offset_x + width, offset_x, offset_x]
         y_coordinates = [offset_y, offset_y, offset_y + height, offset_y + height, offset_y]
         return x_coordinates, y_coordinates
-    
-
-
-        
-
-
-     
-
-
-
