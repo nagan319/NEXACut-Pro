@@ -20,8 +20,8 @@ class RouterFileWidget(QWidget):
         layout = QHBoxLayout()
 
         self.data_widget = DataWidget(self.data, self.router_util.editable_keys, self.router_util.value_ranges, True, False)
-        self.data_widget.deleteRequested.connect(self.on_delete_requested)
-        self.data_widget.saveRequested.connect(self.on_save_requested)
+        self.data_widget.deleteRequested.connect(self.__on_delete_requested__)
+        self.data_widget.saveRequested.connect(self.__on_save_requested__)
 
         self.preview_widget = PreviewWidget(self.data['preview_path'])
 
@@ -29,13 +29,13 @@ class RouterFileWidget(QWidget):
         layout.addWidget(self.preview_widget, 4)
         self.setLayout(layout)
 
-    def on_save_requested(self, data):
-        self.data = data
-        self._update_preview()
-
-    def on_delete_requested(self):
-        self.deleteRequested.emit(self.data['filename'])
-
     def _update_preview(self):
         self.router_util.save_router_preview(self.data)
         self.preview_widget.update()
+
+    def __on_save_requested__(self, data):
+        self.data = data
+        self._update_preview()
+
+    def __on_delete_requested__(self):
+        self.deleteRequested.emit(self.data['filename'])

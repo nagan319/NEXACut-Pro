@@ -42,7 +42,7 @@ class FlatFilter:
         self.dst_path = dst_path
 
         self.size = size
-        self.EDGE_THRESHOLD = min(size.w, size.h)//25
+        self.EDGE_THRESHOLD = int(min(size.w, size.h)//25)
 
         self.src_corners = self._sort_corners(corners)
         self.dst_corners = self._get_rect_corners(self.size)
@@ -98,7 +98,7 @@ class FlatFilter:
     def save_image(self):
         transformation_matrix = self._get_transformation_matrix(self.src_corners, self.dst_corners)
         image: np.ndarray = cv2.imread(self.src_path, cv2.IMREAD_COLOR)
-        image = cv2.warpPerspective(image, transformation_matrix, (self.size.w, self.size.h))
+        image = cv2.warpPerspective(image, transformation_matrix, (int(self.size.w), int(self.size.h)))
         image = self._remove_edge_ctr(image, Colors())
         cv2.imwrite(self.dst_path, image)
      

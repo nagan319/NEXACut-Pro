@@ -30,7 +30,7 @@ class RouterWidget(WidgetTemplate):
         router_widgets = [RouterFileWidget(self.router_util, router) for router in self.router_data]
 
         for widget in router_widgets:
-            widget.deleteRequested.connect(self.on_router_delete_requested)
+            widget.deleteRequested.connect(self.__on_router_delete_requested__)
 
         self.__file_preview_widget = WidgetViewer(1, 1, router_widgets) 
 
@@ -68,7 +68,7 @@ class RouterWidget(WidgetTemplate):
         self.router_util.save_router_preview(new_router_data)
 
         new_router_widget = RouterFileWidget(self.router_util, new_router_data)
-        new_router_widget.deleteRequested.connect(self.on_router_delete_requested)
+        new_router_widget.deleteRequested.connect(self.__on_router_delete_requested__)
 
         self.__file_preview_widget.append_widgets([new_router_widget])
         self.update_add_button_text() 
@@ -87,7 +87,7 @@ class RouterWidget(WidgetTemplate):
                 return idx
         return -1
 
-    def on_router_delete_requested(self, filename: str):
+    def __on_router_delete_requested__(self, filename: str):
         index = self._get_idx_of_filename(filename)
 
         filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, filename)

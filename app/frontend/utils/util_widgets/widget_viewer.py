@@ -99,6 +99,7 @@ class WidgetViewer(QStackedWidget): # grid view
 
         return main_widget
 
+    # 'carousel' excluding arrows etc.
     def _get_tab_central_widget(self, min_widget_idx: int, max_widget_idx: int) -> QWidget:
 
         view_widget = QWidget()
@@ -107,7 +108,7 @@ class WidgetViewer(QStackedWidget): # grid view
         for i in range(self.widgets_y):
 
             row_widget = QWidget()
-            row_widget.setMinimumHeight(int(MIN_HEIGHT*.8/self.widgets_y)) # get min height
+            row_widget.setMinimumHeight(int(MIN_HEIGHT*.8/self.widgets_y)) 
             apply_stylesheet(row_widget, "light.css")
             row_widget_layout = QHBoxLayout()
 
@@ -118,7 +119,7 @@ class WidgetViewer(QStackedWidget): # grid view
                 if curr_widget_idx > max_widget_idx:
                     row_widget_layout.addStretch(1)
 
-                else: # add widget from widgets list
+                else: 
                     curr_widget = self.widgets[curr_widget_idx]
                     row_widget_layout.addWidget(curr_widget, 1)
             

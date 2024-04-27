@@ -36,12 +36,12 @@ class STLFileWidget(QWidget):
         amt_input = QLineEdit()
         amt_input.setPlaceholderText("Amount")
         apply_stylesheet(amt_input, 'small-input-box.css')
-        amt_input.textEdited.connect(self.on_amount_edited)
+        amt_input.textEdited.connect(self.__on_amount_edited__)
         amt_input.setText("1")
 
         delete_button = QPushButton("Delete")
         apply_stylesheet(delete_button, 'small-button.css')
-        delete_button.pressed.connect(self.on_delete_button_clicked) 
+        delete_button.pressed.connect(self.__on_delete_requested__) 
 
         bottom_widget_layout.addStretch(2)
         bottom_widget_layout.addWidget(amt_input, 1)
@@ -50,10 +50,10 @@ class STLFileWidget(QWidget):
         bottom_widget.setLayout(bottom_widget_layout)
         return bottom_widget
 
-    def on_delete_button_clicked(self):
+    def __on_delete_requested__(self):
         self.deleteRequested.emit(self.file_name)
 
-    def on_amount_edited(self, new_text):
+    def __on_amount_edited__(self, new_text):
         try:
             new_amount = int(new_text)
             self.amountEdited.emit(self.file_name, new_amount) 

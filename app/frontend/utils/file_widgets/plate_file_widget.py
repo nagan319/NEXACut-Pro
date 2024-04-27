@@ -33,7 +33,7 @@ class PlateFileWidget(QWidget):
         import_button_container = QWidget()
         import_button_container_layout = QHBoxLayout()
         import_button = QPushButton("Import Image")
-        import_button.pressed.connect(self.on_import_requested)
+        import_button.pressed.connect(self.__on_import_requested__)
         apply_stylesheet(import_button, 'small-button.css')
 
         import_button_container_layout.addStretch(1)
@@ -44,20 +44,24 @@ class PlateFileWidget(QWidget):
 
     def _get_data_widget(self) -> QWidget:
         data_widget = DataWidget(self.data, self.plate_util.editable_keys, self.plate_util.value_ranges, False, True)
-        data_widget.deleteRequested.connect(self.on_delete_requested)
-        data_widget.saveRequested.connect(self.on_save_requested)
+        data_widget.deleteRequested.connect(self.__on_delete_requested__)
+        data_widget.saveRequested.connect(self.__on_save_requested__)
         return data_widget
-
-    def on_import_requested(self):
-        self.importRequested.emit(self.data['filename'])
-
-    def on_save_requested(self, data: dict):
-        self.data = data
-        self._update_preview()
-
-    def on_delete_requested(self):
-        self.deleteRequested.emit(self.data['filename'])
 
     def _update_preview(self):
         self.plate_util.save_preview_image(self.data)
         self.preview_widget.update()
+
+    def __on_import_requested__(self):
+        self.importRequested.emit(self.data['filename'])
+
+    def __on_save_requested__(self, data: dict):
+        self.data = data
+        self._update_preview()
+
+    def update_image_preview(self):
+        self._update_preview()
+
+    def __on_delete_requested__(self):
+        self.deleteRequested.emit(self.data['filename'])
+

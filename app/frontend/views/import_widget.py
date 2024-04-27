@@ -43,7 +43,7 @@ class ImportWidget(WidgetTemplate):
         main_widget.setLayout(main_layout)
         apply_stylesheet(main_widget, "light.css")
 
-        self.update_import_button_text()
+        self._update_import_button_text()
 
         self.__init_template_gui__("Import Part Files", main_widget)
 
@@ -106,8 +106,8 @@ class ImportWidget(WidgetTemplate):
                 png_location = parser.preview_path
 
                 preview_widget = STLFileWidget(file_name, png_location)
-                preview_widget.deleteRequested.connect(self.on_widget_delete_request)
-                preview_widget.amountEdited.connect(self.on_widget_amt_edited)
+                preview_widget.deleteRequested.connect(self.__on_widget_delete_request__)
+                preview_widget.amountEdited.connect(self.__on_widget_amt_edited__)
                 widgets.append(preview_widget)
 
                 self._save_file_to_data(file_name, outer_contour, 1) 
@@ -118,21 +118,21 @@ class ImportWidget(WidgetTemplate):
             imported += 1
 
         self.__file_preview_widget.append_widgets(widgets)
-        self.update_import_button_text()
+        self._update_import_button_text()
 
-    def update_import_button_text(self):
+    def _update_import_button_text(self):
         if self._get_total_part_amount() >= self.part_import_limit:
             apply_stylesheet(self.__import_button, "generic-button-red.css")
         else:
             apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
 
-    def on_widget_amt_edited(self, filename: str, value: int): 
+    def __on_widget_amt_edited__(self, filename: str, value: int): 
         index = self._get_idx_of_filename(filename)
         self.imported_parts[index]['amount'] = value
-        self.update_import_button_text()
+        self._update_import_button_text()
 
-    def on_widget_delete_request(self, filename: str): 
+    def __on_widget_delete_request__(self, filename: str): 
         index = self._get_idx_of_filename(filename)
 
         filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
@@ -141,5 +141,5 @@ class ImportWidget(WidgetTemplate):
 
         self.imported_parts.pop(index)
         self.__file_preview_widget.pop_widget(index)
-        self.update_import_button_text()
+        self._update_import_button_text()
 

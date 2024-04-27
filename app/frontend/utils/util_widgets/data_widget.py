@@ -40,7 +40,7 @@ class DataWidget(QWidget):
             name_widget.setText(self.data['name'])
             apply_stylesheet(name_widget, "data-title-input-box.css")
             name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            name_widget.editingFinished.connect(lambda box=name_widget: self.on_name_edited(box.text()))
+            name_widget.editingFinished.connect(lambda box=name_widget: self.__on_name_edited__(box.text()))
 
             layout.addWidget(name_widget)
 
@@ -53,11 +53,11 @@ class DataWidget(QWidget):
 
         save_button = QPushButton("Save")
         apply_stylesheet(save_button, self.button_stylesheet)
-        save_button.pressed.connect(self.on_save_requested)
+        save_button.pressed.connect(self.__on_save_requested__)
 
         delete_button = QPushButton("Delete")
         apply_stylesheet(delete_button, self.button_stylesheet)
-        delete_button.pressed.connect(self.on_delete_requested)
+        delete_button.pressed.connect(self.__on_delete_requested__)
 
         button_container_layout.addStretch(1)
         button_container_layout.addWidget(save_button, 2)
@@ -81,7 +81,7 @@ class DataWidget(QWidget):
 
         value_box = QLineEdit()
         value_box.setText(str(value))
-        value_box.editingFinished.connect(lambda key=key, box=value_box: self.on_value_edited(box.text(), key, box))
+        value_box.editingFinished.connect(lambda key=key, box=value_box: self.__on_value_edited__(box.text(), key, box))
         if type(self.value_ranges[key]) == tuple and self.value_ranges[key] is not None: 
             min_value, max_value = self.value_ranges[key]
             value_box.setPlaceholderText(f"{min_value}-{max_value}")
@@ -101,10 +101,10 @@ class DataWidget(QWidget):
             words[i] = word.capitalize()     
         return " ".join(words)
 
-    def on_name_edited(self, text: str):
+    def __on_name_edited__(self, text: str):
         self.data['name'] = text
 
-    def on_value_edited(self, string: str, key_edited: str, box: QLineEdit):
+    def __on_value_edited__(self, string: str, key_edited: str, box: QLineEdit):
         
         if string == str(self.data[key_edited]):
             return
@@ -119,8 +119,8 @@ class DataWidget(QWidget):
             box.setText(str(value))
             self.data[key_edited] = value
 
-    def on_save_requested(self):
+    def __on_save_requested__(self):
         self.saveRequested.emit(self.data)
 
-    def on_delete_requested(self):
+    def __on_delete_requested__(self):
         self.deleteRequested.emit()
