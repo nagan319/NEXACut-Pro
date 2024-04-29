@@ -2,6 +2,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from ...config import PROCESSING_SCALE_FACTOR
+
 class PlateUtil:
 
     MAX_DIMENSION = 5000
@@ -77,7 +79,7 @@ class PlateUtil:
         preview_path = os.path.join(self.plate_preview_folder_path, filename_no_extension+'.png')
         return preview_path
 
-
+    # receives upscaled (processing resolution) contours, converts down
     def save_preview_image(self, plate_data: dict, figsize: tuple = (4, 4), dpi: int = 80):
 
         try: 
@@ -97,7 +99,8 @@ class PlateUtil:
         if image_contours is not None:
             for contour in image_contours:
                 contour_array = np.array(contour)
-                x_coords, y_coords = contour_array[:, 0, 0], contour_array[:, 0, 1]
+                x_coords = contour_array[:, 0, 0] / PROCESSING_SCALE_FACTOR
+                y_coords = contour_array[:, 0, 1] / PROCESSING_SCALE_FACTOR
                 plt.plot(x_coords, y_coords, color=self.plot_line_color, linewidth=1)
 
         plt.grid(True)

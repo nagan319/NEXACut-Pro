@@ -7,6 +7,8 @@ APP_TITLE = 'NEXACut Pro'
 
 CURRENT_DIR = os.path.dirname(__file__)
 
+PROCESSING_SCALE_FACTOR = 5
+
 # frontend paths
 FRONTEND_FOLDER = 'frontend'
 RESOURCES_FOLDER = 'resources'

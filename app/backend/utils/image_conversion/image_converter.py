@@ -7,6 +7,8 @@ from .utils import Size, Colors
 from .filters import BinaryFilter, FlatFilter
 from .features import FeatDetector, FeatDisplay, FeatEditor
 
+from ....config import PROCESSING_SCALE_FACTOR
+
 class ImageConverter:
 
     MAX_IMG_W = 2000
@@ -16,8 +18,6 @@ class ImageConverter:
     BIN_NAME = 'bin.png'
     FEAT_NAME = 'feat.png'
     FLAT_NAME = 'flat.png'
-
-    OUTPUT_RES = 4 # pixels/mm
 
     def __init__(self, data_folder_path: str, plate_w: float, plate_h: float, pixmap_height: int):
         
@@ -100,7 +100,7 @@ class ImageConverter:
         if not self._valid_features():
             return False
 
-        new_size = self.plate_size.get_scaled(self.OUTPUT_RES)
+        new_size = self.plate_size.get_scaled(PROCESSING_SCALE_FACTOR)
         flat_filter = FlatFilter(self.feat_path, self.flat_path, new_size, self.features.corners)
         flat_filter.save_image()
 
@@ -108,5 +108,5 @@ class ImageConverter:
     
     def get_finalized_contours(self) -> list:
         flat_image = cv2.imread(self.flat_path, cv2.IMREAD_GRAYSCALE)
-        contours, _ = cv2.findContours(flat_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE) # ignores contour hierarchy
+        contours, _ = cv2.findContours(flat_image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         return contours

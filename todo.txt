@@ -2,8 +2,8 @@ Title widget:
 - Draw new logo that fits updated gui
 
 Stock widget:
-- add parameter to avoid unit conversion etc. for string fields
 - make widget size independent of pixmap width (set some minimum value)
+- figure out image scaling process
 
 Grid view widget:
 - add button cooldown for deletion/addition
@@ -12,7 +12,3 @@ General:
 - Add setup.py file
 - add config.ini file 
 - Add keyboard shortcuts
-
-image preview: make imported image update automatically (create file widget 'interface' with required save method implementation)
-
-get rid of weird little rectangle (figure out scaling issue)

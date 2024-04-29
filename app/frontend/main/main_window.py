@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle(APP_TITLE)
         self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
-        QFontDatabase.addApplicationFont(MAIN_FONT_PATH) # figure out this issue
+        QFontDatabase.addApplicationFont(MAIN_FONT_PATH) 
 
         self.__layout = QHBoxLayout()
         self.__layout.setContentsMargins(0, 0, 0, 0) 
