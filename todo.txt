@@ -12,3 +12,6 @@ General:
 - Add setup.py file
 - add config.ini file 
 - Add keyboard shortcuts
+
+Testing:
+- write tests for data manager

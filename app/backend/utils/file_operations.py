@@ -87,10 +87,7 @@ class FileProcessor:
         
         os.remove(filepath)
 
-    def copy_file(self, src_path: str, dst_path: str): # copies a to b
+    def copy_file(self, src_path: str, dst_path: str):
 
-        if not (os.path.exists(src_path) or os.path.exists(dst_path)):
-            return
-        
-        os.remove(dst_path)
-        shutil.copyfile(src_path, dst_path)
+        if os.path.exists(src_path) and not os.path.exists(dst_path):
+            shutil.copyfile(src_path, dst_path)
