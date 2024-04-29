@@ -1,0 +1,20 @@
+solid Invalid
+   facet normal -2.029102e-01 -9.791974e-01 -0.000000e+00
+      outer loop
+         vertex 1.089122e+02 6.928444e-01 6.350000e+00
+         vertex 1.089122e+02 6.928444e-01 0.000000e+00
+         vertex 1.100226e+02 4.627407e-01 0.000000e+00
+      endloop
+   endfacet
+   facet normal -2.029102e-01 -9.791974e-01 0.000000e+00
+      outer loop
+         vertex 1.089122e+02 6.928444e-01 6.350000e+00
+         vertex 1.100226e+02 4.627407e-01 0.000000e+00
+         vertex 1.100226e+02 4.627407e-01 6.350000e+00
+      endloop
+   endfacet
+   facet normal -7.428164e-02 -9.972373e-01 -0.000000e+00
+      outer loop
+         vertex 1.100226e+02 4.627407e-01 6.350000e+00
+         vertex 1.100226e+02 4.627407e-01 0.000000e+00
+endsolid Invalid
