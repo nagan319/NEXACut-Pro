@@ -10,6 +10,9 @@ class BinaryFilter:
         if threshold < 0 or threshold > 255:
             raise ValueError("Threshold value must be in range 0-255")
         
+        if not isinstance(threshold, int):
+            raise TypeError("Threshold must be integer value")
+        
         self.threshold = threshold
 
         self.src_path = src_path
@@ -38,6 +41,17 @@ class FlatFilter:
 
     def __init__(self, src_path: str, dst_path: str, size: Size, corners: list):
 
+        if not isinstance(src_path, str):
+            raise TypeError("src_path must be a string")
+        if not isinstance(dst_path, str):
+            raise TypeError("dst_path must be a string")
+        if not isinstance(size, Size):
+            raise TypeError("size must be a Size object")
+        if not isinstance(corners, list):
+            raise TypeError("corners must be a list")
+        if len(corners) != 4 or not all(isinstance(point, tuple) and len(point) == 2 for point in corners):
+            raise ValueError("corners must be a list of four (x, y) tuples")
+
         self.src_path = src_path
         self.dst_path = dst_path
 
@@ -48,7 +62,6 @@ class FlatFilter:
         self.dst_corners = self._get_rect_corners(self.size)
 
     def _sort_corners(self, corners: list) -> list:
-
         avg_x = sum(point[0] for point in corners) / len(corners)
         avg_y = sum(point[1] for point in corners) / len(corners)
         sorted_corners = [None for _ in range(4)]

@@ -1,11 +1,25 @@
 import math
+import os
 import numpy as np
 import cv2
 
 from .utils import Size, Colors
 
 class Features:
+
     def __init__(self, plate_contour=None, other_contours=None, corners=None, selected_contour=None, selected_corner=None):
+
+        if plate_contour is not None and not isinstance(plate_contour, np.ndarray):
+            raise TypeError("plate_contour must be a numpy.ndarray or None")
+        if other_contours is not None and not isinstance(other_contours, list):
+            raise TypeError("other_contours must be a list or None")
+        if corners is not None and not isinstance(corners, list):
+            raise TypeError("corners must be a list or None")
+        if selected_contour is not None and not isinstance(selected_contour, int):
+            raise TypeError("selected_contour must be an int or None")
+        if selected_corner is not None and not isinstance(selected_corner, int):
+            raise TypeError("selected_corner must be an int or None")
+        
         self.plate_contour: np.ndarray = plate_contour
         self.other_contours: list = other_contours
         self.corners: list = corners
@@ -23,13 +37,30 @@ class FeatDetector:
     MIN_CORNER_SEPARATION = 1000
 
     def __init__(self, src_path: str, size: Size):
-        
+
+        if not isinstance(src_path, str):
+            raise TypeError("Path must be string")
+
+        if not os.path.isfile(src_path):
+            raise FileNotFoundError(f"File '{src_path}' not found.")
+
         image = cv2.imread(src_path, cv2.IMREAD_GRAYSCALE)
+
+        if not isinstance(size, Size):
+            raise TypeError("Size must be an instance of Size.")
+    
+        if size.w <= 0 or size.h <= 0:
+            raise ValueError("Size dimensions must be positive numbers.")
+
+        if image is None:
+            raise ValueError(f"Unable to read image file '{src_path}'.")
 
         max_contour, other_contours = self._get_contours(image, size)
 
         if max_contour is not None:
             corners = self._get_corners(max_contour)
+        else:
+            corners = None  
 
         self.features = Features(plate_contour=max_contour, other_contours=other_contours, corners=corners)
     
