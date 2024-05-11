@@ -11,6 +11,8 @@ from ...backend.utils.file_operations import FileProcessor
 
 from ...config import CAD_PREVIEW_DATA_PATH
 
+# imported parts updated format: list of part objects
+
 class ImportWidget(WidgetTemplate):
 
     def __init__(self, imported_parts: list, part_import_limit: int):

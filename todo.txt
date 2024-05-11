@@ -1,9 +1,15 @@
 Title widget:
 - Draw new logo that fits updated gui
 
+Import widget: 
+- add option for selecting material and thickness (better than setting automatically)
+
 Stock widget:
 - make widget size independent of pixmap width (set some minimum value)
 - figure out image scaling process
+
+Optimization widget: 
+- list out contours and possible plates in console
 
 Grid view widget:
 - add button cooldown for deletion/addition
