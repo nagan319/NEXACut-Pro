@@ -1,56 +1,82 @@
 import atexit
-from .utils.file_operations import FileProcessor
+import logging
+from .utils.file_processor import FileProcessor
 
 class DataManager:
-
-    PART_IMPORT_LIMIT = 20 
-    ROUTER_LIMIT = 10
-    PLATE_LIMIT = 50
-
     def __init__(self, user_pref_path: str, router_data_path: str, plate_data_path: str, temp_data_folders: list):
+        self._user_preference_file_path = user_pref_path
+        self._router_data_path = router_data_path
+        self._plate_data_path = plate_data_path
+        self._temp_data_folders = temp_data_folders
 
-        self.USER_PREFERENCE_FILE_PATH = user_pref_path
-        self.ROUTER_DATA_FOLDER_PATH = router_data_path
-        self.PLATE_DATA_FOLDER_PATH = plate_data_path
-        self.TEMP_DATA_FOLDERS = temp_data_folders
+        self._logger = logging.getLogger(__name__)  
 
-        self.file_processor = FileProcessor()
-        self.__init_long_term_data__()
-        self.__init_temp_data__()
-        atexit.register(self.__atexit__)
+        self._init_long_term_data()
+        self._init_temp_data()
+        atexit.register(self._atexit)
 
-    def __init_long_term_data__(self):
-        self.user_preferences = self.__get_user_preferences__()
-        self.router_data = self.__get_router_data__()
-        self.plate_data = self.__get_plate_data__()
+    def _init_long_term_data(self):
+        try:
+            self._user_preferences = self._get_user_preferences()
+            self._router_data = self._get_router_data()
+            self._plate_data = self._get_plate_data()
+        except Exception as e:
+            self._logger.error(f"Error initializing long-term data: {e}")
 
-    def __init_temp_data__(self):
-        self.imported_parts = []
+    def _init_temp_data(self):
+        self._imported_parts = []
 
-    def __get_user_preferences__(self) -> dict:
-        return self.file_processor.get_json_data(self.USER_PREFERENCE_FILE_PATH)
-    
-    def __get_router_data__(self) -> dict:
-        return self.file_processor.get_all_json_in_folder(self.ROUTER_DATA_FOLDER_PATH)
+    def _get_user_preferences(self) -> dict:
+        try:
+            return FileProcessor.read_file(self._user_preference_file_path)
+        except Exception as e:
+            self._logger.error(f"Error reading user preferences: {e}")
+            return {}
 
-    def __get_plate_data__(self) -> dict:
-        return self.file_processor.get_all_json_in_folder(self.PLATE_DATA_FOLDER_PATH)
+    def _get_router_data(self) -> dict:
+        try:
+            return FileProcessor.read_file(self._router_data_path)
+        except Exception as e:
+            self._logger.error(f"Error reading router data: {e}")
+            return {}
 
-    def __atexit__(self):
-        self.__save_user_preferences__()
-        self.__save_router_data__()
-        self.__save_plate_data__()
-        self.__clear_temporary_data__()
+    def _get_plate_data(self) -> dict:
+        try:
+            return FileProcessor.read_file(self._plate_data_path)
+        except Exception as e:
+            self._logger.error(f"Error reading plate data: {e}")
+            return {}
 
-    def __save_user_preferences__(self):
-        self.file_processor.save_json(self.USER_PREFERENCE_FILE_PATH, self.user_preferences)
-    
-    def __save_router_data__(self): 
-        self.file_processor.save_all_json_to_folder(self.router_data, self.ROUTER_DATA_FOLDER_PATH)
-    
-    def __save_plate_data__(self):
-        self.file_processor.save_all_json_to_folder(self.plate_data, self.PLATE_DATA_FOLDER_PATH)
+    def _atexit(self):
+        try:
+            self._save_user_preferences()
+            self._save_router_data()
+            self._save_plate_data()
+            self._clear_temporary_data()
+        except Exception as e:
+            self._logger.error(f"Error saving data or clearing temporary data: {e}")
 
-    def __clear_temporary_data__(self):
-        for folder in self.TEMP_DATA_FOLDERS:
-            self.file_processor.clear_folder_contents(folder)
+    def _save_user_preferences(self):
+        try:
+            FileProcessor.write_file(self._user_preference_file_path, self._user_preferences)
+        except Exception as e:
+            self._logger.error(f"Error saving user preferences: {e}")
+
+    def _save_router_data(self):
+        try:
+            FileProcessor.write_file(self._router_data_path, self._router_data)
+        except Exception as e:
+            self._logger.error(f"Error saving router data: {e}")
+
+    def _save_plate_data(self):
+        try:
+            FileProcessor.write_file(self._plate_data_path, self._plate_data)
+        except Exception as e:
+            self._logger.error(f"Error saving plate data: {e}")
+
+    def _clear_temporary_data(self):
+        try:
+            for folder in self._temp_data_folders:
+                FileProcessor.clear_folder_contents(folder)
+        except Exception as e:
+            self._logger.error(f"Error clearing temporary data: {e}")

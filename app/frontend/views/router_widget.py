@@ -7,7 +7,7 @@ from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.router_file_widget import RouterFileWidget
 
 from ...backend.utils.router_util import RouterUtil
-from ...backend.utils.file_operations import FileProcessor
+from ...backend.utils.file_processor import FileProcessor
 
 from ...config import ROUTER_PREVIEW_DATA_PATH
 
@@ -92,7 +92,7 @@ class RouterWidget(WidgetTemplate):
 
         filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, filename)
         file_processor = FileProcessor()
-        file_processor.delete_file(filepath)
+        file_processor.remove_file(filepath)
 
         self.router_data.pop(index)
         self.__file_preview_widget.pop_widget(index)

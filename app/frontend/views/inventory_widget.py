@@ -9,7 +9,7 @@ from ..utils.image_widgets.image_editor_window import ImageEditorWindow
 
 from ...backend.utils.plate_util import PlateUtil
 from ...backend.utils.image_conversion.image_converter import ImageConverter
-from ...backend.utils.file_operations import FileProcessor
+from ...backend.utils.file_processor import FileProcessor
 
 from ...config import PLATE_PREVIEW_DATA_PATH
 
@@ -128,7 +128,7 @@ class InventoryWidget(WidgetTemplate):
 
         file_processor = FileProcessor()
         png_path = self.plate_data[index]['preview_path']
-        file_processor.delete_file(png_path)
+        file_processor.remove_file(png_path)
 
         self.plate_data.pop(index)
         self.__file_preview_widget.pop_widget(index)

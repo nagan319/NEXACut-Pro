@@ -1,3 +1,7 @@
+General:
+- Store files in CSV instead of json
+- use pathmanager class instead of list of constants
+
 Title widget:
 - Draw new logo that fits updated gui
 

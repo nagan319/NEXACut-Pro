@@ -7,7 +7,7 @@ from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.stl_file_widget import STLFileWidget
 
 from ...backend.utils.stl_parser import STLParser
-from ...backend.utils.file_operations import FileProcessor
+from ...backend.utils.file_processor import FileProcessor
 
 from ...config import CAD_PREVIEW_DATA_PATH
 
@@ -139,7 +139,7 @@ class ImportWidget(WidgetTemplate):
 
         filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
         file_processor = FileProcessor()
-        file_processor.delete_file(filepath)
+        file_processor.remove_file(filepath)
 
         self.imported_parts.pop(index)
         self.__file_preview_widget.pop_widget(index)
