@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
 from PyQt6.QtGui import QPixmap
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 from ..util_widgets.interactive_preview import InteractivePreview
 
@@ -65,19 +65,19 @@ class ImageFeatureWidget(QWidget):
 
     def _get_corner_counter(self) -> QLabel:
         corner_counter = QLabel()
-        apply_stylesheet(corner_counter, 'generic-text.css')
+        Style.apply_stylesheet(corner_counter, 'generic-text.css')
         corner_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
         return corner_counter
 
     def _get_delete_button(self) -> QPushButton:
         delete_button = QPushButton("Delete Selected")
         delete_button.pressed.connect(self.on_delete_button_pressed)
-        apply_stylesheet(delete_button, 'small-button-inactive.css') 
+        Style.apply_stylesheet(delete_button, 'small-button-inactive.css') 
         return delete_button
 
     def _get_mode_label(self) -> QLabel:
         mode_label = QLabel()
-        apply_stylesheet(mode_label, 'generic-text.css')
+        Style.apply_stylesheet(mode_label, 'generic-text.css')
         mode_label.setAlignment(Qt.AlignmentFlag.AlignCenter) 
         return mode_label      
 
@@ -86,7 +86,7 @@ class ImageFeatureWidget(QWidget):
         save_button_wrapper_layout = QHBoxLayout()
         save_button = QPushButton("Save Features")
         save_button.pressed.connect(self.on_save_button_pressed)
-        apply_stylesheet(save_button, 'small-button.css')
+        Style.apply_stylesheet(save_button, 'small-button.css')
 
         save_button_wrapper_layout.addStretch(2)
         save_button_wrapper_layout.addWidget(save_button, 1)
@@ -114,7 +114,7 @@ class ImageFeatureWidget(QWidget):
         amt_corners = len(self.image_converter.features.corners)
         self.corner_counter.setText(f"Corners: {amt_corners}/4")
         stylesheet = "generic-text.css" if amt_corners == 4 else "generic-text-red.css"
-        apply_stylesheet(self.corner_counter, stylesheet)
+        Style.apply_stylesheet(self.corner_counter, stylesheet)
 
     def _update_preview_widget(self):
         pixmap = QPixmap(self.image_converter.feat_path)
@@ -123,9 +123,9 @@ class ImageFeatureWidget(QWidget):
 
     def _update_delete_button_widget(self):
         if self.mode == Mode.REMOVE_EXCESS_FEATURES and self._selection_active():
-            apply_stylesheet(self.delete_button, 'small-button.css')
+            Style.apply_stylesheet(self.delete_button, 'small-button.css')
         else:
-            apply_stylesheet(self.delete_button, 'small-button-inactive.css')
+            Style.apply_stylesheet(self.delete_button, 'small-button-inactive.css')
 
     def _update_mode_label(self):
         mode_text = "Add Missing Corners" if self.mode == Mode.ADD_MISSING_CORNERS else "Remove Excess Features"

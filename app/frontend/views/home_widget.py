@@ -10,20 +10,20 @@ class HomeWidget(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.__layout = QVBoxLayout()
+        layout = QVBoxLayout()
 
-        self.__logo_label = QLabel()
+        logo_label = QLabel()
         pixmap = QPixmap(LOGO_PATH)
         scaled_pixmap = pixmap.scaledToWidth(1000)
-        self.__logo_label.setPixmap(scaled_pixmap)
-        self.__logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_label.setPixmap(scaled_pixmap)
+        logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self.__app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
-        apply_stylesheet(self.__app_description_label, "small-text.css")
+        app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
+        apply_stylesheet(app_description_label, "small-text.css")
 
-        self.__layout.addStretch()
-        self.__layout.addWidget(self.__logo_label)
-        self.__layout.addStretch()
-        self.__layout.addWidget(self.__app_description_label)
+        layout.addStretch()
+        layout.addWidget(logo_label)
+        layout.addStretch()
+        layout.addWidget(app_description_label)
 
-        self.setLayout(self.__layout)
+        self.setLayout(layout)

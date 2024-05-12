@@ -1,7 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QStackedWidget
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 from .image_load_widget import ImageLoadWidget
 from .image_threshold_widget import ImageThresholdWidget
@@ -22,7 +22,7 @@ class ImageEditorWidget(QStackedWidget):
 
     def __init_gui__(self):
 
-        apply_stylesheet(self, 'light.css')
+        Style.apply_stylesheet(self, 'light.css')
 
         self.setCurrentIndex(0)
 

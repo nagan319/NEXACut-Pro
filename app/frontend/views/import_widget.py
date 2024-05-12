@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
-from ..utils.style import apply_stylesheet
+from ..utils.style import Style
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.stl_file_widget import STLFileWidget
@@ -10,8 +10,6 @@ from ...backend.utils.stl_parser import STLParser
 from ...backend.utils.file_processor import FileProcessor
 
 from ...config import CAD_PREVIEW_DATA_PATH
-
-# imported parts updated format: list of part objects
 
 class ImportWidget(WidgetTemplate):
 
@@ -31,7 +29,7 @@ class ImportWidget(WidgetTemplate):
 
         self.__import_button = QPushButton()
         self.__import_button.clicked.connect(self.import_files)
-        apply_stylesheet(self.__import_button, "generic-button.css")
+        Style.apply_stylesheet(self.__import_button, "generic-button.css")
 
         import_button_wrapper = QWidget()
         import_button_wrapper_layout = QHBoxLayout()
@@ -43,7 +41,7 @@ class ImportWidget(WidgetTemplate):
         main_layout.addWidget(self.__file_preview_widget, 7)
         main_layout.addWidget(import_button_wrapper, 1)
         main_widget.setLayout(main_layout)
-        apply_stylesheet(main_widget, "light.css")
+        Style.apply_stylesheet(main_widget, "light.css")
 
         self._update_import_button_text()
 
@@ -105,7 +103,7 @@ class ImportWidget(WidgetTemplate):
                 parser = STLParser(path, CAD_PREVIEW_DATA_PATH)
                 parser.save_preview_image()
                 outer_contour = parser.outer_contour
-                png_location = parser.preview_path
+                png_location = parser.png_filepath
 
                 preview_widget = STLFileWidget(file_name, png_location)
                 preview_widget.deleteRequested.connect(self.__on_widget_delete_request__)
@@ -124,9 +122,9 @@ class ImportWidget(WidgetTemplate):
 
     def _update_import_button_text(self):
         if self._get_total_part_amount() >= self.part_import_limit:
-            apply_stylesheet(self.__import_button, "generic-button-red.css")
+            Style.apply_stylesheet(self.__import_button, "generic-button-red.css")
         else:
-            apply_stylesheet(self.__import_button, "generic-button.css")
+            Style.apply_stylesheet(self.__import_button, "generic-button.css")
         self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
 
     def __on_widget_amt_edited__(self, filename: str, value: int): 

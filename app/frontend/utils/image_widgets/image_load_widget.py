@@ -1,7 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
@@ -22,7 +22,7 @@ class ImageLoadWidget(QWidget):
         self.button_frame = QWidget()
         self.button_frame_layout = QHBoxLayout()
         self.import_button = QPushButton("Import Image File")
-        apply_stylesheet(self.import_button, 'generic-button.css')
+        Style.apply_stylesheet(self.import_button, 'generic-button.css')
         self.import_button.pressed.connect(self.import_image_file)
 
         self.button_frame_layout.addStretch(2)

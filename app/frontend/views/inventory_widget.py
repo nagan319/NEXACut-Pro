@@ -1,14 +1,13 @@
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from ..utils.style import apply_stylesheet
+from ..utils.style import Style
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.plate_file_widget import PlateFileWidget
 from ..utils.image_widgets.image_editor_window import ImageEditorWindow
 
 from ...backend.utils.plate_util import PlateUtil
-from ...backend.utils.image_conversion.image_converter import ImageConverter
 from ...backend.utils.file_processor import FileProcessor
 
 from ...config import PLATE_PREVIEW_DATA_PATH
@@ -43,7 +42,7 @@ class InventoryWidget(WidgetTemplate):
         self.__add_new_button_wrapper_layout = QHBoxLayout()
 
         self.__add_new_button = QPushButton()
-        apply_stylesheet(self.__add_new_button, "generic-button.css")
+        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.clicked.connect(self.add_new_plate)
 
         self.__add_new_button_wrapper_layout.addStretch(2)
@@ -55,7 +54,7 @@ class InventoryWidget(WidgetTemplate):
         main_layout.addWidget(self.__add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
-        apply_stylesheet(main_widget, "light.css")
+        Style.apply_stylesheet(main_widget, "light.css")
 
         self.__init_template_gui__("Manage Inventory", main_widget)
         self._update_add_button_text()
@@ -87,9 +86,9 @@ class InventoryWidget(WidgetTemplate):
 
     def _update_add_button_text(self):
         if self._get_plate_amount() >= self.plate_limit:
-            apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
         else:
-            apply_stylesheet(self.__add_new_button, "generic-button.css")
+            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
 
     def __on_plate_import_image_requested__(self, filename: str):

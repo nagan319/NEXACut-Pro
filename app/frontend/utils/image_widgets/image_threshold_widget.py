@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
 from PyQt6.QtGui import QPixmap
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
@@ -52,7 +52,7 @@ class ImageThresholdWidget(QWidget):
     def _get_slider_label(self) -> QWidget:
         slider_label = QLabel("Adjust Threshold Value")
         slider_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        apply_stylesheet(slider_label, 'small-text.css')
+        Style.apply_stylesheet(slider_label, 'small-text.css')
         return slider_label
 
     def _get_slider(self) -> QWidget:
@@ -71,7 +71,7 @@ class ImageThresholdWidget(QWidget):
         save_button_wrapper_layout = QHBoxLayout()
         save_button = QPushButton("Save Binary")
         save_button.pressed.connect(self.on_save_button_pressed)
-        apply_stylesheet(save_button, 'small-button.css')
+        Style.apply_stylesheet(save_button, 'small-button.css')
 
         save_button_wrapper_layout.addStretch(2)
         save_button_wrapper_layout.addWidget(save_button, 1)

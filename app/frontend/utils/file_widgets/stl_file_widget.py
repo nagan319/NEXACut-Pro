@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton
 from PyQt6.QtGui import QPixmap
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 class STLFileWidget(QWidget): 
     
@@ -35,12 +35,12 @@ class STLFileWidget(QWidget):
 
         amt_input = QLineEdit()
         amt_input.setPlaceholderText("Amount")
-        apply_stylesheet(amt_input, 'small-input-box.css')
+        Style.apply_stylesheet(amt_input, 'small-input-box.css')
         amt_input.textEdited.connect(self.__on_amount_edited__)
         amt_input.setText("1")
 
         delete_button = QPushButton("Delete")
-        apply_stylesheet(delete_button, 'small-button.css')
+        Style.apply_stylesheet(delete_button, 'small-button.css')
         delete_button.pressed.connect(self.__on_delete_requested__) 
 
         bottom_widget_layout.addStretch(2)

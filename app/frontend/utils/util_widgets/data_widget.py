@@ -1,9 +1,8 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel
 
-from ..style import apply_stylesheet
-
-from ....backend.utils.input_parser import parse_text
+from ..style import Style
+from ....backend.utils.input_parser import InputParser
 
 class DataWidget(QWidget):
 
@@ -38,7 +37,7 @@ class DataWidget(QWidget):
         if has_name_property:
             name_widget = QLineEdit()
             name_widget.setText(self.data['name'])
-            apply_stylesheet(name_widget, "data-title-input-box.css")
+            Style.apply_stylesheet(name_widget, "data-title-input-box.css")
             name_widget.setAlignment(Qt.AlignmentFlag.AlignCenter)
             name_widget.editingFinished.connect(lambda box=name_widget: self.__on_name_edited__(box.text()))
 
@@ -52,11 +51,11 @@ class DataWidget(QWidget):
         button_container_layout = QHBoxLayout()
 
         save_button = QPushButton("Save")
-        apply_stylesheet(save_button, self.button_stylesheet)
+        Style.apply_stylesheet(save_button, self.button_stylesheet)
         save_button.pressed.connect(self.__on_save_requested__)
 
         delete_button = QPushButton("Delete")
-        apply_stylesheet(delete_button, self.button_stylesheet)
+        Style.apply_stylesheet(delete_button, self.button_stylesheet)
         delete_button.pressed.connect(self.__on_delete_requested__)
 
         button_container_layout.addStretch(1)
@@ -77,7 +76,7 @@ class DataWidget(QWidget):
         key_label = QLabel()
         key_text = self._edit_key_text(key)
         key_label.setText(key_text)
-        apply_stylesheet(key_label, self.text_stylesheet)
+        Style.apply_stylesheet(key_label, self.text_stylesheet)
 
         value_box = QLineEdit()
         value_box.setText(str(value))
@@ -87,7 +86,7 @@ class DataWidget(QWidget):
             value_box.setPlaceholderText(f"{min_value}-{max_value}")
         else:
             value_box.setPlaceholderText(f"")
-        apply_stylesheet(value_box, "small-input-box.css")
+        Style.apply_stylesheet(value_box, "small-input-box.css")
   
         data_row_layout.addWidget(key_label, self.key_val_ratio[0])
         data_row_layout.addWidget(value_box, self.key_val_ratio[1])
@@ -111,9 +110,9 @@ class DataWidget(QWidget):
         
         if self.value_ranges[key_edited]:
             min, max = self.value_ranges[key_edited]
-            value = parse_text(string, min, max)
+            value = InputParser.parse_text(string, min, max)
         else:
-            value = parse_text(string)
+            value = InputParser.parse_text(string)
 
         if value is not None:
             box.setText(str(value))

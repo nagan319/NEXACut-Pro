@@ -1,9 +1,11 @@
 import os
 import matplotlib.pyplot as plt
+from typing import List, Dict, Any
 
-class RouterUtil: # class containing router-related constants
+class RouterUtil: 
 
-    ROUTER_MAX_DIMENSION = 5000 # all constants in mm
+    # all constants in mm
+    ROUTER_MAX_DIMENSION = 5000 
     PLATE_MAX_DIMENSION = 5000
     DRILL_BIT_MAX_DIAMETER = 100
     MILL_BIT_MAX_DIAMETER = 100
@@ -23,16 +25,14 @@ class RouterUtil: # class containing router-related constants
     DEFAULT_MILL_BIT_DIAMETER = 10
 
     def __init__(self, router_preview_folder_path: str):
-
         self.router_preview_folder_path = router_preview_folder_path
-        self.editable_keys = self._get_editable_keys()
-        self.value_ranges = self._load_value_ranges()
-
         self.plot_bg_color: str='#ffffff' 
         self.plot_text_color: str='#000000'
         self.plot_line_color: str='#000000'
 
-    def _get_editable_keys(self):
+    @property
+    @staticmethod
+    def editable_keys():
         return [
             "machineable_area_(x-axis)",
             "machineable_area_(y-axis)",
@@ -45,47 +45,49 @@ class RouterUtil: # class containing router-related constants
             "mill_bit_diameter"
         ]
 
-    def _load_value_ranges(self): 
+    @property
+    @staticmethod
+    def value_ranges(): 
         return {
-            "machineable_area_(x-axis)": (0, self.ROUTER_MAX_DIMENSION), 
-            "machineable_area_(y-axis)": (0, self.ROUTER_MAX_DIMENSION), 
-            "machineable_area_(z-axis)": (0, self.ROUTER_MAX_DIMENSION), 
-            "max_plate_size_(x-axis)": (0, self.PLATE_MAX_DIMENSION),
-            "max_plate_size_(y-axis)": (0, self.PLATE_MAX_DIMENSION),
-            "max_plate_size_(z-axis)": (0, self.PLATE_MAX_DIMENSION),
-            "min_safe_distance_from_edge": (0, self.ROUTER_MAX_DIMENSION//2),
-            "drill_bit_diameter": (0, self.DRILL_BIT_MAX_DIAMETER),
-            "mill_bit_diameter": (0, self.MILL_BIT_MAX_DIAMETER)
+            "machineable_area_(x-axis)": (0, RouterUtil.ROUTER_MAX_DIMENSION), 
+            "machineable_area_(y-axis)": (0, RouterUtil.ROUTER_MAX_DIMENSION), 
+            "machineable_area_(z-axis)": (0, RouterUtil.ROUTER_MAX_DIMENSION), 
+            "max_plate_size_(x-axis)": (0, RouterUtil.PLATE_MAX_DIMENSION),
+            "max_plate_size_(y-axis)": (0, RouterUtil.PLATE_MAX_DIMENSION),
+            "max_plate_size_(z-axis)": (0, RouterUtil.PLATE_MAX_DIMENSION),
+            "min_safe_distance_from_edge": (0, RouterUtil.ROUTER_MAX_DIMENSION//2),
+            "drill_bit_diameter": (0, RouterUtil.DRILL_BIT_MAX_DIAMETER),
+            "mill_bit_diameter": (0, RouterUtil.MILL_BIT_MAX_DIAMETER)
         }
         
-    def get_new_router(self, router_data: list) -> dict:
-        filename =  self._get_next_router_filename(router_data)
-        preview_path = self.get_preview_path(filename)
+    @property    
+    @staticmethod
+    def get_new_router(router_data: list) -> dict:
+        filename =  RouterUtil._get_next_router_filename(router_data)
+        preview_path = RouterUtil.get_preview_path(filename)
 
         return {
             "filename": filename,
             "preview_path": preview_path,
-            "name": self.ROUTER_DEFAULT_NAME,
-            "machineable_area_(x-axis)": self.ROUTER_DEFAULT_X, 
-            "machineable_area_(y-axis)": self.ROUTER_DEFAULT_Y, 
-            "machineable_area_(z-axis)": self.ROUTER_DEFAULT_Z, 
-            "max_plate_size_(x-axis)": self.PLATE_DEFAULT_X,
-            "max_plate_size_(y-axis)": self.PLATE_DEFAULT_Y,
-            "max_plate_size_(z-axis)": self.PLATE_DEFAULT_Z,
-            "min_safe_distance_from_edge": self.DEFAULT_SAFE_DISTANCE,
-            "drill_bit_diameter": self.DEFAULT_DRILL_BIT_DIAMETER,
-            "mill_bit_diameter": self.DEFAULT_MILL_BIT_DIAMETER
+            "name": RouterUtil.ROUTER_DEFAULT_NAME,
+            "machineable_area_(x-axis)": RouterUtil.ROUTER_DEFAULT_X, 
+            "machineable_area_(y-axis)": RouterUtil.ROUTER_DEFAULT_Y, 
+            "machineable_area_(z-axis)": RouterUtil.ROUTER_DEFAULT_Z, 
+            "max_plate_size_(x-axis)": RouterUtil.PLATE_DEFAULT_X,
+            "max_plate_size_(y-axis)": RouterUtil.PLATE_DEFAULT_Y,
+            "max_plate_size_(z-axis)": RouterUtil.PLATE_DEFAULT_Z,
+            "min_safe_distance_from_edge": RouterUtil.DEFAULT_SAFE_DISTANCE,
+            "drill_bit_diameter": RouterUtil.DEFAULT_DRILL_BIT_DIAMETER,
+            "mill_bit_diameter": RouterUtil.DEFAULT_MILL_BIT_DIAMETER
         }
 
-    def _get_next_router_filename(self, router_data: list) -> str: 
-
+    @staticmethod
+    def _get_next_router_filename(router_data: list) -> str: 
         router_filenames = [router['filename'] for router in router_data]
-
         if len(router_filenames) == 0:
             return "ROUTER-0.json"  
         
         router_name_values = [int(router_filename.split('-')[1].split('.')[0]) for router_filename in router_filenames]
-
         sorted_values = sorted(router_name_values)
 
         for i, value in enumerate(sorted_values[:-1]):
@@ -95,6 +97,7 @@ class RouterUtil: # class containing router-related constants
 
         return "ROUTER-"+str(sorted_values[-1]+1)+".json"
     
+    @staticmethod
     def get_preview_path(self, router_filename: str) -> str:
 
         filename_no_extension = os.path.splitext(router_filename)[0]
@@ -138,7 +141,6 @@ class RouterUtil: # class containing router-related constants
         plt.savefig(image_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
     
     def _generate_rectangle_coordinates(self, width, height, offset_x=0, offset_y=0):
-
         x_coordinates = [offset_x, offset_x + width, offset_x + width, offset_x, offset_x]
         y_coordinates = [offset_y, offset_y, offset_y + height, offset_y + height, offset_y]
         return x_coordinates, y_coordinates

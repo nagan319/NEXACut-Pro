@@ -1,27 +1,30 @@
 import re
 import math
 
-def parse_text(text: str, min_value: int = None, max_value: int = None) -> float:
+class InputParser:
 
-    unit_conversion = {'in': 25.4, 'feet': 304.8, 'ft': 304.8, 'mm': 1, 'cm': 10}
+    @staticmethod
+    def parse_text(text: str, min_value: int = None, max_value: int = None) -> float:
 
-    if text.replace('.', '').isdigit():
-        value_mm = float(text)  
-    else:
-        match = re.match(r'([\d.]+)\s*([a-zA-Z]+)', text)
-        if not match:
-            return None  
+        unit_conversion = {'in': 25.4, 'feet': 304.8, 'ft': 304.8, 'mm': 1, 'cm': 10}
 
-        value, unit = float(match.group(1)), match.group(2).lower()
+        if text.replace('.', '').isdigit():
+            value_mm = float(text)  
+        else:
+            match = re.match(r'([\d.]+)\s*([a-zA-Z]+)', text)
+            if not match:
+                return None  
 
-        if unit not in unit_conversion:
-            return None  
+            value, unit = float(match.group(1)), match.group(2).lower()
 
-        value_mm = value * unit_conversion[unit]
+            if unit not in unit_conversion:
+                return None  
 
-    value_mm = round(value_mm, 5)
+            value_mm = value * unit_conversion[unit]
 
-    if min_value is not None and max_value is not None:    
-        value_mm = max(min_value, min(value_mm, max_value))
+        value_mm = round(value_mm, 5)
 
-    return value_mm
+        if min_value is not None and max_value is not None:    
+            value_mm = max(min_value, min(value_mm, max_value))
+
+        return value_mm

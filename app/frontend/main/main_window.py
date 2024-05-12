@@ -30,11 +30,11 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(MIN_WIDTH, MIN_HEIGHT)
         QFontDatabase.addApplicationFont(MAIN_FONT_PATH) 
 
-        self.__layout = QHBoxLayout()
-        self.__layout.setContentsMargins(0, 0, 0, 0) 
-        self.__layout.setSpacing(0)
+        layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0) 
+        layout.setSpacing(0)
 
-        self.__menu = Menu(self.MENU_BUTTONS)
+        menu = Menu(self.MENU_BUTTONS)
 
         self.WIDGETS = [
             HomeWidget(),
@@ -43,13 +43,13 @@ class MainWindow(QMainWindow):
             InventoryWidget(data_manager.plate_data, PLATE_LIMIT)
         ]
 
-        self.__content_viewer = ContentViewer(self.WIDGETS)
+        content_viewer = ContentViewer(self.WIDGETS)
 
-        self.__layout.addWidget(self.__menu, 2)
-        self.__layout.addWidget(self.__content_viewer, 8)
+        layout.addWidget(menu, 2)
+        layout.addWidget(content_viewer, 8)
 
-        self.__widget = QWidget()
-        self.__widget.setLayout(self.__layout)
-        self.setCentralWidget(self.__widget)
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
 
-        self.__menu.button_clicked.connect(self.__content_viewer.set_view)
+        self.menu.button_clicked.connect(content_viewer.set_view)

@@ -2,7 +2,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
 from PyQt6.QtGui import QPixmap
 
-from ..style import apply_stylesheet
+from ..style import Style
 
 from ....backend.utils.image_conversion.image_converter import ImageConverter
 
@@ -43,7 +43,7 @@ class ImageFlatWidget(QWidget):
         save_button_wrapper_layout = QHBoxLayout()
         save_button = QPushButton("Save Image")
         save_button.pressed.connect(self.on_save_button_pressed)
-        apply_stylesheet(save_button, 'small-button.css')
+        Style.apply_stylesheet(save_button, 'small-button.css')
 
         save_button_wrapper_layout.addStretch(2)
         save_button_wrapper_layout.addWidget(save_button, 1)
