@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
-from PyQt6.QtGui import QFontDatabase, QFont
+from PyQt6.QtGui import QFontDatabase
 
 from ..utils.util_widgets.menu_widget import Menu
 from ..utils.util_widgets.content_viewer import ContentViewer
@@ -11,17 +11,17 @@ from ..views.inventory_widget import InventoryWidget
 
 from ...backend.data_mgr import DataManager
 
-from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH
+from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH, PART_IMPORT_LIMIT, ROUTER_LIMIT, PLATE_LIMIT
 
 class MainWindow(QMainWindow):
-
     MENU_BUTTONS = [
         "Home", 
         "Import Part Files", 
         "Configure CNC Router", 
         "Manage Inventory", 
         "Generate Optimal Placement", 
-        "Configure Preferences"]
+        "Configure Preferences"
+    ]
 
     def __init__(self, data_manager: DataManager): 
         super().__init__()
@@ -38,9 +38,9 @@ class MainWindow(QMainWindow):
 
         self.WIDGETS = [
             HomeWidget(),
-            ImportWidget(data_manager.imported_parts, data_manager.PART_IMPORT_LIMIT),
-            RouterWidget(data_manager.router_data, data_manager.ROUTER_LIMIT),
-            InventoryWidget(data_manager.plate_data, data_manager.PLATE_LIMIT)
+            ImportWidget(data_manager.imported_parts, PART_IMPORT_LIMIT),
+            RouterWidget(data_manager.router_data, ROUTER_LIMIT),
+            InventoryWidget(data_manager.plate_data, PLATE_LIMIT)
         ]
 
         self.__content_viewer = ContentViewer(self.WIDGETS)
