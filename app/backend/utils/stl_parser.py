@@ -1,5 +1,6 @@
 import os
 import math
+import logging
 from collections import defaultdict
 from stl import mesh
 from typing import Tuple, List
@@ -40,9 +41,17 @@ class STLParser:
     '''
 
     def __init__(self, src_path: str, cad_preview_dst: str = None, bg_color: str='#ffffff', text_color: str='#000000', plot_color: str='#000000'):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.StreamHandler())
+        self.logger.info(f"Initializing STLParser with source path: {src_path}")
+
         if not os.path.exists(src_path):
+            self.logger.error(f"STL file {src_path} does not exist") 
             raise FileNotFoundError(f"STL file {src_path} does not exist") 
+        
         if not STLParser.stl_file_valid(src_path):
+            self.logger.error(f"STL file {src_path} is invalid")
             raise ValueError(f"STL file {src_path} is invalid")
 
         if cad_preview_dst:
@@ -61,11 +70,14 @@ class STLParser:
         self.stl_mesh_vector: np.array = np.array(self.stl_mesh.vectors)
         
         if not STLParser.stl_mesh_valid(self.stl_mesh_vector):
-            raise ValueError(f"STL file {self.stl_filepath} must be in mesh vector format.")
+            e = f"STL file {self.stl_filepath} must be in mesh vector format."
+            self.logger.error(e)
+            raise ValueError(e)
         
         self._parse_stl()
 
     def _parse_stl(self):
+        self.logger.info("Parsing STL file...")
         self.flat_axis: Axis = STLParser.get_flat_axis(self.stl_mesh_vector)
         self.thickness: float = STLParser.get_thickness(self.stl_mesh_vector, self.flat_axis)
         self.flattened_mesh: np.array = STLParser.get_flattened_mesh(self.stl_mesh_vector, self.flat_axis)
