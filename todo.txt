@@ -27,7 +27,6 @@ Testing:
 - write tests that include plates oriented sideways and not necessarily flat
 - write tests for data manager
 
-
 CSV Conversion:
 - update router objects
 - udpate plate objects

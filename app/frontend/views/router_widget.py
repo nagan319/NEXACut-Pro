@@ -1,7 +1,7 @@
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
-from ..utils.style import apply_stylesheet
+from ..utils.style import Style
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
 from ..utils.file_widgets.router_file_widget import RouterFileWidget
@@ -38,7 +38,7 @@ class RouterWidget(WidgetTemplate):
         self.__add_new_button_wrapper_layout = QHBoxLayout()
 
         self.__add_new_button = QPushButton()
-        apply_stylesheet(self.__add_new_button, "generic-button.css")
+        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.clicked.connect(self.add_new_router)
 
         self.__add_new_button_wrapper_layout.addStretch(2)
@@ -50,7 +50,7 @@ class RouterWidget(WidgetTemplate):
         main_layout.addWidget(self.__add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
-        apply_stylesheet(main_widget, "light.css")
+        Style.apply_stylesheet(main_widget, "light.css")
 
         self.__init_template_gui__("Configure CNC Router", main_widget)
         self.update_add_button_text()
@@ -76,9 +76,9 @@ class RouterWidget(WidgetTemplate):
 
     def update_add_button_text(self):
         if self._get_router_amount() >= self.router_limit:
-            apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
         else:
-            apply_stylesheet(self.__add_new_button, "generic-button.css")
+            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
         self.__add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.router_limit})")
 
     def _get_idx_of_filename(self, filename: str):

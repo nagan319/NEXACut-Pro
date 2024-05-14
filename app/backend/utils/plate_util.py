@@ -1,30 +1,30 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import List, Dict, Any
 
-from ...config import PROCESSING_SCALE_FACTOR
+from ...config import PLATE_PREVIEW_DATA_PATH, PROCESSING_SCALE_FACTOR
 
 class PlateUtil:
 
-    MAX_DIMENSION = 5000
+    '''
+    Contains functions for creating and modifying plate data
+    '''
 
+    # all constants in mm
+    
+    MAX_DIMENSION = 5000
     DEFAULT_X = 1000
     DEFAULT_Y = 1000
     DEFAULT_Z = 10
-
     DEFAULT_MATERIAL = "Aluminum"
 
-    def __init__(self, plate_preview_folder_path: str):
+    PLOT_BG_COLOR = '#ffffff' 
+    PLOT_TEXT_COLOR = '#000000'
+    PLOT_LINE_COLOR = '#000000'
 
-        self.plate_preview_folder_path = plate_preview_folder_path
-        self.editable_keys = self._get_editable_keys()
-        self.value_ranges=  self._get_value_ranges()
-
-        self.plot_bg_color: str='#ffffff' 
-        self.plot_text_color: str='#000000'
-        self.plot_line_color: str='#000000'
-
-    def _get_editable_keys(self):
+    @staticmethod
+    def editable_keys() -> List[str]:
         return [
             "width_(x)",
             "height_(y)",
@@ -32,94 +32,80 @@ class PlateUtil:
             "material"
         ]
     
-    def _get_value_ranges(self):
+    @staticmethod
+    def value_ranges() -> Dict[str, Any]:
         return {
-            "width_(x)": (0, self.MAX_DIMENSION),
-            "height_(y)": (0, self.MAX_DIMENSION),
-            "thickness_(z)": (0, self.MAX_DIMENSION),
+            "width_(x)": (0, PlateUtil.MAX_DIMENSION),
+            "height_(y)": (0, PlateUtil.MAX_DIMENSION),
+            "thickness_(z)": (0, PlateUtil.MAX_DIMENSION),
             "material": None
         }
     
-    def get_new_plate(self, plate_data: list) -> dict:
-        filename =  self._get_next_plate_filename(plate_data)
-        preview_path = self.get_preview_path(filename)
+    @staticmethod
+    def get_new_plate(plate_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        id = PlateUtil._get_next_plate_id(plate_data)
+        preview_path = PlateUtil.get_preview_path(id)
 
         return {
-            "filename": filename,
+            "id": id,
             "preview_path": preview_path,
-            "width_(x)": self.DEFAULT_X,
-            "height_(y)": self.DEFAULT_Y,
-            "thickness_(z)": self.DEFAULT_Z,
-            "material": self.DEFAULT_MATERIAL,
+            "width_(x)": PlateUtil.DEFAULT_X,
+            "height_(y)": PlateUtil.DEFAULT_Y,
+            "thickness_(z)": PlateUtil.DEFAULT_Z,
+            "material": PlateUtil.DEFAULT_MATERIAL,
             "contours": None
         }
-     
-    def _get_next_plate_filename(self, plate_data: list) -> str: 
-
-        plate_filenames = [plate['filename'] for plate in plate_data]
-
-        if len(plate_filenames) == 0:
-            return "PLATE-0.json"  
-        
-        plate_name_values = [int(plate_filename.split('-')[1].split('.')[0]) for plate_filename in plate_filenames]
-
-        sorted_values = sorted(plate_name_values)
-
-        for i, value in enumerate(sorted_values[:-1]):
-            next_value = sorted_values[i+1]
-            if next_value != value+1:
-                return "PLATE-"+str(value+1)+'.json'
-
-        return "PLATE-"+str(sorted_values[-1]+1)+".json"
+    
+    @staticmethod
+    def _get_next_plate_id(plate_data: List[Dict[str, Any]]) -> int: 
+        plate_ids = [plate.get('id') for plate in plate_data]
+        return max(plate_ids) + 1 if plate_ids else 0
  
- 
-    def get_preview_path(self, plate_filename: str) -> str:
-
-        filename_no_extension = os.path.splitext(plate_filename)[0]
-        preview_path = os.path.join(self.plate_preview_folder_path, filename_no_extension+'.png')
+    @staticmethod
+    def get_preview_path(id: int) -> str:
+        preview_path = os.path.join(PLATE_PREVIEW_DATA_PATH, str(id)+'.png')
         return preview_path
 
     # receives upscaled (processing resolution) contours, converts down
-    def save_preview_image(self, plate_data: dict, figsize: tuple = (4, 4), dpi: int = 80):
+    @staticmethod
+    def save_preview_image(plate_data: Dict[str, Any], figsize: tuple = (4, 4), dpi: int = 80):
 
-        try: 
-            image_path = plate_data['preview_path']
-            image_contours = plate_data['contours']
-            plate_xy =  plate_data['width_(x)'], plate_data['height_(y)']
-        except KeyError as e:
-            print(e)
+        try:
+            image_path = plate_data.get('preview_path')
+            image_contours = plate_data.get("contours")
+            plate_xy = (plate_data.get("width_(x)"), plate_data.get("height_(y)"))
+            plate_rect_x, plate_rect_y = PlateUtil._generate_rectangle_coordinates(*plate_xy)
+
+        except KeyError:
             return
 
-        plate_rect_x, plate_rect_y = self._generate_rectangle_coordinates(*plate_xy)
-    
         plt.figure(figsize=figsize)
         
-        plt.plot(plate_rect_x, plate_rect_y, color = self.plot_line_color)
+        plt.plot(plate_rect_x, plate_rect_y, color = PlateUtil.PLOT_LINE_COLOR)
 
         if image_contours is not None:
             for contour in image_contours:
                 contour_array = np.array(contour)
                 x_coords = contour_array[:, 0, 0] / PROCESSING_SCALE_FACTOR
                 y_coords = contour_array[:, 0, 1] / PROCESSING_SCALE_FACTOR
-                plt.plot(x_coords, y_coords, color=self.plot_line_color, linewidth=1)
+                plt.plot(x_coords, y_coords, color=PlateUtil.PLOT_LINE_COLOR, linewidth=1)
 
         plt.grid(True)
-        plt.gca().set_facecolor(self.plot_bg_color) # bg color
+        plt.gca().set_facecolor(PlateUtil.PLOT_BG_COLOR)
         plt.gca().set_aspect('equal') 
         plt.grid(False)
-        plt.tick_params(axis='x', colors=self.plot_text_color)  # tick color
-        plt.tick_params(axis='y', colors=self.plot_text_color) 
+        plt.tick_params(axis='x', colors=PlateUtil.PLOT_TEXT_COLOR)  
+        plt.tick_params(axis='y', colors=PlateUtil.PLOT_TEXT_COLOR) 
 
-        plt.gca().spines['top'].set_color(self.plot_text_color) # graph borders
-        plt.gca().spines['bottom'].set_color(self.plot_text_color)
-        plt.gca().spines['left'].set_color(self.plot_text_color)
-        plt.gca().spines['right'].set_color(self.plot_text_color)
+        plt.gca().spines['top'].set_color(PlateUtil.PLOT_TEXT_COLOR) 
+        plt.gca().spines['bottom'].set_color(PlateUtil.PLOT_TEXT_COLOR)
+        plt.gca().spines['left'].set_color(PlateUtil.PLOT_TEXT_COLOR)
+        plt.gca().spines['right'].set_color(PlateUtil.PLOT_TEXT_COLOR)
 
         plt.savefig(image_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
 
-
-    def _generate_rectangle_coordinates(self, width, height, offset_x=0, offset_y=0):
-
+    @staticmethod
+    def _generate_rectangle_coordinates(width: float, height: float, offset_x: float = 0, offset_y: float = 0):
         x_coordinates = [offset_x, offset_x + width, offset_x + width, offset_x, offset_x]
         y_coordinates = [offset_y, offset_y, offset_y + height, offset_y + height, offset_y]
         return x_coordinates, y_coordinates

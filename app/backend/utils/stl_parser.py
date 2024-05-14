@@ -40,11 +40,17 @@ class STLParser:
     The outer contour is refined to include an amount of vertices appropriate for processing
     '''
 
-    def __init__(self, src_path: str, cad_preview_dst: str = None, bg_color: str='#ffffff', text_color: str='#000000', plot_color: str='#000000'):
+    BG_COLOR: str = "#ffffff"
+    TEXT_COLOR: str = '#000000'
+    PLOT_COLOR: str = '#000000'
+
+    def __init__(self, src_path: str, dst_folder: str):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(logging.StreamHandler())
         self.logger.info(f"Initializing STLParser with source path: {src_path}")
+
+        self.parsing_complete = False
 
         if not os.path.exists(src_path):
             self.logger.error(f"STL file {src_path} does not exist") 
@@ -54,29 +60,22 @@ class STLParser:
             self.logger.error(f"STL file {src_path} is invalid")
             raise ValueError(f"STL file {src_path} is invalid")
 
-        if cad_preview_dst:
-            png_filename = os.path.basename(src_path)[:-4] + ".png" 
-            self.png_filepath: str = os.path.join(cad_preview_dst, png_filename)
-        else:
-            self.png_filepath: str = None
+        if not os.path.exists(dst_folder):
+            self.logger.error(f"Destination folder path {dst_folder} does not exist")
+            raise FileNotFoundError(f"Destination folder path {dst_folder} does not exist")
 
         self.stl_filepath: str = src_path
-
-        self.bg_color: str = bg_color
-        self.text_color: str = text_color
-        self.plot_color: str = plot_color
-        
         self.stl_mesh: np.array = mesh.Mesh.from_file(self.stl_filepath)
         self.stl_mesh_vector: np.array = np.array(self.stl_mesh.vectors)
         
         if not STLParser.stl_mesh_valid(self.stl_mesh_vector):
-            e = f"STL file {self.stl_filepath} must be in mesh vector format."
+            e = f"STL file {self.stl_filepath} must be in mesh vector format. Current shape is {self.stl_mesh_vector.shape}"
             self.logger.error(e)
             raise ValueError(e)
-        
-        self._parse_stl()
 
-    def _parse_stl(self):
+        self.dst_path = os.path.join(dst_folder, os.path.basename(self.stl_filepath)+'.png') 
+
+    def parse_stl(self):
         self.logger.info("Parsing STL file...")
         self.flat_axis: Axis = STLParser.get_flat_axis(self.stl_mesh_vector)
         self.thickness: float = STLParser.get_thickness(self.stl_mesh_vector, self.flat_axis)
@@ -85,6 +84,7 @@ class STLParser:
         self.contours: List[np.array] = STLParser.get_contours(self.outer_edges)
         self.outer_contour: np.array = STLParser.get_outermost_contour(self.contours)
         self.outer_contour = STLParser.get_smooth_contour(self.outer_contour)
+        self.parsing_complete = True
 
     @staticmethod
     def stl_file_valid(filepath: str) -> bool:
@@ -93,15 +93,10 @@ class STLParser:
             return True
         except Exception:
             return False
-    
-    @staticmethod
-    def axis_valid(axis: Axis) -> bool:
-        return axis in Axis
 
     @staticmethod
     def stl_mesh_valid(stl_mesh: np.array) -> bool:
-        expected_shape: VectorArrayShape = (Ellipsis, 3, 3)
-        return stl_mesh.shape == expected_shape
+        return len(stl_mesh.shape) == 3 and stl_mesh.shape[1:] == (3, 3)
 
     @staticmethod # assumes valid mesh
     def get_flat_axis(stl_mesh: np.array, tolerance: int = MIN_QUANTIZED_VALUE_DECIMALS) -> Axis:
@@ -115,7 +110,7 @@ class STLParser:
         flat_axis_coordinates = np.round(stl_mesh[:, :, flat_axis.value], tolerance)
         unique_points = np.unique(flat_axis_coordinates)
         thickness = max(unique_points) - min(unique_points) 
-        return thickness
+        return float(thickness)
 
     @staticmethod # assumes valid mesh
     def get_flattened_mesh(stl_mesh: np.array, flat_axis: Axis, tolerance: float = MIN_QUANTIZED_VALUE) -> np.array: 
@@ -241,12 +236,9 @@ class STLParser:
 
         return np.array(new_contour)
 
-    def save_preview_image(self, scale_factor: float = 1, figsize: tuple = (3.9, 3.75), dpi: int = 80): 
+    def save_image(self, scale_factor: float = 1, figsize: tuple = (3.9, 3.75), dpi: int = 80): 
 
-        if not self.png_filepath: 
-            return
-
-        if os.path.exists(self.png_filepath): 
+        if not self.parsing_complete or os.path.exists(self.dst_path):
             return
 
         plt.figure(figsize=figsize)
@@ -256,20 +248,20 @@ class STLParser:
             if scale_factor != 1:
                 x_values = tuple([x * scale_factor for x in x_values])
                 y_values = tuple([y * scale_factor for y in y_values])
-            plt.plot(x_values, y_values, color=self.plot_color)
+            plt.plot(x_values, y_values, color=STLParser.PLOT_COLOR)
 
         plt.xlabel('Z: ' + str(self.thickness) + ' mm', fontsize=10, labelpad=5, horizontalalignment='center')
 
         plt.grid(True)
-        plt.gca().set_facecolor(self.bg_color) 
+        plt.gca().set_facecolor(STLParser.BG_COLOR) 
         plt.gca().set_aspect('equal') 
         plt.grid(False)
-        plt.tick_params(axis='x', colors=self.text_color)  
-        plt.tick_params(axis='y', colors=self.text_color) 
+        plt.tick_params(axis='x', colors=STLParser.TEXT_COLOR)  
+        plt.tick_params(axis='y', colors=STLParser.TEXT_COLOR) 
 
-        plt.gca().spines['top'].set_color(self.text_color) 
-        plt.gca().spines['bottom'].set_color(self.text_color)
-        plt.gca().spines['left'].set_color(self.text_color)
-        plt.gca().spines['right'].set_color(self.text_color)
+        plt.gca().spines['top'].set_color(STLParser.TEXT_COLOR) 
+        plt.gca().spines['bottom'].set_color(STLParser.TEXT_COLOR)
+        plt.gca().spines['left'].set_color(STLParser.TEXT_COLOR)
+        plt.gca().spines['right'].set_color(STLParser.TEXT_COLOR)
 
-        plt.savefig(self.png_filepath, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi) 
+        plt.savefig(self.dst_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi) 

@@ -19,26 +19,26 @@ class ImportWidget(WidgetTemplate):
         self.imported_parts = imported_parts
         self.part_import_limit = part_import_limit
 
-        self.__init_gui__()
+        self._setup_ui()
     
-    def __init_gui__(self):
+    def _setup_ui(self):
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
-        self.__file_preview_widget = WidgetViewer(4, 2) 
+        self._file_preview_widget = WidgetViewer(4, 2) 
 
-        self.__import_button = QPushButton()
-        self.__import_button.clicked.connect(self.import_files)
-        Style.apply_stylesheet(self.__import_button, "generic-button.css")
+        self._import_button = QPushButton()
+        self._import_button.clicked.connect(self.import_files)
+        Style.apply_stylesheet(self._import_button, "generic-button.css")
 
         import_button_wrapper = QWidget()
         import_button_wrapper_layout = QHBoxLayout()
         import_button_wrapper_layout.addStretch(2)
-        import_button_wrapper_layout.addWidget(self.__import_button, 1)
+        import_button_wrapper_layout.addWidget(self._import_button, 1)
         import_button_wrapper_layout.addStretch(2)
         import_button_wrapper.setLayout(import_button_wrapper_layout)
 
-        main_layout.addWidget(self.__file_preview_widget, 7)
+        main_layout.addWidget(self._file_preview_widget, 7)
         main_layout.addWidget(import_button_wrapper, 1)
         main_widget.setLayout(main_layout)
         Style.apply_stylesheet(main_widget, "light.css")
@@ -101,7 +101,9 @@ class ImportWidget(WidgetTemplate):
 
             try:
                 parser = STLParser(path, CAD_PREVIEW_DATA_PATH)
-                parser.save_preview_image()
+                parser.parse_stl()
+                parser.save_image()
+                
                 outer_contour = parser.outer_contour
                 png_location = parser.png_filepath
 
@@ -117,15 +119,15 @@ class ImportWidget(WidgetTemplate):
 
             imported += 1
 
-        self.__file_preview_widget.append_widgets(widgets)
+        self._file_preview_widget.append_widgets(widgets)
         self._update_import_button_text()
 
     def _update_import_button_text(self):
         if self._get_total_part_amount() >= self.part_import_limit:
-            Style.apply_stylesheet(self.__import_button, "generic-button-red.css")
+            Style.apply_stylesheet(self._import_button, "generic-button-red.css")
         else:
-            Style.apply_stylesheet(self.__import_button, "generic-button.css")
-        self.__import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
+            Style.apply_stylesheet(self._import_button, "generic-button.css")
+        self._import_button.setText(f"Import Parts ({self._get_total_part_amount()}/{self.part_import_limit})")
 
     def __on_widget_amt_edited__(self, filename: str, value: int): 
         index = self._get_idx_of_filename(filename)
@@ -140,6 +142,6 @@ class ImportWidget(WidgetTemplate):
         file_processor.remove_file(filepath)
 
         self.imported_parts.pop(index)
-        self.__file_preview_widget.pop_widget(index)
+        self._file_preview_widget.pop_widget(index)
         self._update_import_button_text()
 

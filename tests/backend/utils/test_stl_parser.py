@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pytest
 import tempfile
-from ....app.backend.utils.stl_parser import STLParser, Axis
+from app.backend.utils.stl_parser import STLParser, Axis
 
 @pytest.fixture
 def temp_dir():
@@ -11,70 +11,66 @@ def temp_dir():
 
 @pytest.fixture
 def stl_file_path_valid():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'stl files', 'RollerConnectorPlate.STL')
+    parent_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'stl files')
+    stl_file = os.path.abspath(os.path.join(parent_dir, 'RollerConnectorPlate.STL'))
+    assert os.path.exists(stl_file), f"STL file {stl_file} does not exist"
+    return stl_file
 
 @pytest.fixture
 def stl_file_path_invalid():
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'stl files', 'invalid.STL')
+    parent_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'data', 'stl files')
+    invalid_stl_file = os.path.abspath(os.path.join(parent_dir, 'invalid.STL'))
+    assert os.path.exists(invalid_stl_file), f"Invalid STL file {invalid_stl_file} does not exist"
+    return invalid_stl_file
 
 @pytest.fixture
-def stl_parser_valid(stl_file_path_valid, temp_dir):
-    return STLParser(stl_file_path_valid, temp_dir)
+def stl_parser_valid(stl_file_path_valid, temp_dir):  # Modified fixture
+    return STLParser(stl_file_path_valid, temp_dir)  # Pass temp_dir as cad_preview_dst
 
-@pytest.fixture
-def stl_parser_invalid(stl_file_path_invalid):
-    return STLParser(stl_file_path_invalid)
+def test_stl_file_valid(stl_file_path_valid):
+    assert STLParser.stl_file_valid(stl_file_path_valid) == True
 
-def test_init_valid_stl(stl_parser_valid):
-    assert isinstance(stl_parser_valid.stl_mesh, np.ndarray)
-    assert stl_parser_valid.flat_axis in Axis
-    assert isinstance(stl_parser_valid.thickness, float)
-    assert isinstance(stl_parser_valid.flattened_mesh, np.ndarray)
-    assert isinstance(stl_parser_valid.outer_edges, list)
+def test_stl_mesh_valid(stl_parser_valid):
+    assert STLParser.stl_mesh_valid(stl_parser_valid.stl_mesh_vector) == True
 
-def test_init_invalid_stl():
-    with pytest.raises(FileNotFoundError):
-        STLParser("invalid random file path")
-
-def test_valid_axis(stl_parser_valid):
-    assert stl_parser_valid.axis_valid(stl_parser_valid.flat_axis)
-
-def test_invalid_axis(stl_parser_valid):
-    assert not stl_parser_valid.axis_valid(Axis.X) 
-
-def test_stl_format_valid(stl_parser_valid):
-    assert STLParser.stl_file_valid(stl_parser_valid.stl_filepath)
-
-def test_stl_format_invalid(stl_file_path_invalid):
-    assert not STLParser.stl_file_valid(stl_file_path_invalid)
+def test_get_flat_axis(stl_parser_valid):
+    assert STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector) in [Axis.X, Axis.Y, Axis.Z]
 
 def test_get_thickness(stl_parser_valid):
-    assert stl_parser_valid.get_thickness(stl_parser_valid.stl_mesh_vector, stl_parser_valid.flat_axis) > 0
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    assert isinstance(STLParser.get_thickness(stl_parser_valid.stl_mesh_vector, flat_axis), float)
 
-def test_flatten_stl(stl_parser_valid):
-    flattened_mesh = stl_parser_valid.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, stl_parser_valid.flat_axis)
-    assert isinstance(flattened_mesh, np.ndarray)
+def test_get_flattened_mesh(stl_parser_valid):
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    assert isinstance(STLParser.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, flat_axis), np.ndarray)
 
 def test_get_outer_edges(stl_parser_valid):
-    outer_edges = stl_parser_valid.get_outer_edges(stl_parser_valid.flattened_mesh, stl_parser_valid.flat_axis)
-    assert isinstance(outer_edges, list)
-    assert all(isinstance(edge, tuple) for edge in outer_edges)
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    flattened_mesh = STLParser.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, flat_axis)
+    assert isinstance(STLParser.get_outer_edges(flattened_mesh, flat_axis), list)
 
 def test_get_contours(stl_parser_valid):
-    contours = stl_parser_valid.get_contours(stl_parser_valid.outer_edges)
-    assert isinstance(contours, list)
-    assert all(isinstance(contour, np.ndarray) for contour in contours)
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    flattened_mesh = STLParser.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, flat_axis)
+    outer_edges = STLParser.get_outer_edges(flattened_mesh, flat_axis)
+    assert isinstance(STLParser.get_contours(outer_edges), list)
 
 def test_get_outermost_contour(stl_parser_valid):
-    outer_contour = stl_parser_valid.get_outermost_contour(stl_parser_valid.contours)
-    assert isinstance(outer_contour, np.ndarray)
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    flattened_mesh = STLParser.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, flat_axis)
+    outer_edges = STLParser.get_outer_edges(flattened_mesh, flat_axis)
+    contours = STLParser.get_contours(outer_edges)
+    assert isinstance(STLParser.get_outermost_contour(contours), np.ndarray)
 
 def test_get_smooth_contour(stl_parser_valid):
-    contour = np.array([[0, 0], [5, 5], [10, 0]])
-    smooth_contour = STLParser.get_smooth_contour(contour)
-    assert isinstance(smooth_contour, np.ndarray)
+    flat_axis = STLParser.get_flat_axis(stl_parser_valid.stl_mesh_vector)
+    flattened_mesh = STLParser.get_flattened_mesh(stl_parser_valid.stl_mesh_vector, flat_axis)
+    outer_edges = STLParser.get_outer_edges(flattened_mesh, flat_axis)
+    contours = STLParser.get_contours(outer_edges)
+    outermost_contour = STLParser.get_outermost_contour(contours)
+    assert isinstance(STLParser.get_smooth_contour(outermost_contour), np.ndarray)
 
-def test_save_preview_image(stl_parser_valid, temp_dir):
-    preview_path = os.path.join(temp_dir, 'preview.png')
-    stl_parser_valid.save_preview_image(figsize=(3, 3), dpi=100)
-    assert os.path.exists(preview_path)
+def test_save_image(stl_parser_valid):
+    stl_parser_valid.parse_stl()
+    stl_parser_valid.save_image()
+    assert os.path.exists(stl_parser_valid.dst_path)

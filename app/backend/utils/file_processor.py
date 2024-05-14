@@ -13,19 +13,19 @@ class FileProcessor:
         if not os.path.exists(filepath):
             return 
         if extension.lower() == '.csv':
-            return FileProcessor.read_csv(filepath)
+            return FileProcessor._read_csv(filepath)
         if extension.lower() == '.json':
-            return FileProcessor.read_json(filepath)
+            return FileProcessor._read_json(filepath)
 
     @staticmethod
-    def read_csv(filepath: str) -> List[Dict[str, Any]]:
+    def _read_csv(filepath: str) -> List[Dict[str, Any]]:
         with open(filepath, mode='r', newline='') as file:
             reader = csv.DictReader(file)
             data = list(reader)    
         return data
 
     @staticmethod
-    def read_json(filepath: str) -> Dict[str, Any]:
+    def _read_json(filepath: str) -> Dict[str, Any]:
         with open(filepath, 'r') as file:
             data = json.load(file)
         return data
@@ -35,21 +35,21 @@ class FileProcessor:
         _, extension = os.path.splitext(filepath)
 
         if extension.lower() == '.csv' and format == 'csv':
-            FileProcessor.write_csv(filepath, data)
+            FileProcessor._write_csv(filepath, data)
             return
         if extension.lower() == '.json' and format == 'json':
-            FileProcessor.write_json(filepath, data)
+            FileProcessor._write_json(filepath, data)
             return
 
     @staticmethod
-    def write_csv(filepath: str, data: list):
+    def _write_csv(filepath: str, data: list):
         with open(filepath, mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames=data[0].keys())
             writer.writeheader()
             writer.writerows(data)
 
     @staticmethod
-    def write_json(filepath: str, data: dict):
+    def _write_json(filepath: str, data: dict):
         with open(filepath, 'w') as file:
             json.dump(data, file, indent=4)
 
@@ -59,14 +59,14 @@ class FileProcessor:
             return
 
         data = []
-        files: list[str] = FileProcessor.load_folder_contents(folder_path)
+        files: list[str] = FileProcessor.get_all_filenames_in_folder(folder_path)
 
         for filename in files:
             _, extension = os.path.splitext(filename)
             if extension.lower() != '.json':
                 continue
             filepath = os.path.join(folder_path, filename)
-            data.append(FileProcessor.read_json(filepath))
+            data.append(FileProcessor._read_json(filepath))
 
         return data
 
@@ -88,7 +88,7 @@ class FileProcessor:
         for item in data:
             filename = item['filename']
             filepath = os.path.join(folder_path, filename)
-            FileProcessor.write_json(filepath, item)
+            FileProcessor._write_json(filepath, item)
 
     @staticmethod
     def get_all_filenames_in_folder(filepath: str) -> List[str]: 
@@ -114,5 +114,5 @@ class FileProcessor:
 
     @staticmethod
     def copy_file(src_path: str, dst_path: str):
-        if os.path.exists(src_path) and not os.path.eists(dst_path):
+        if os.path.exists(src_path) and not os.path.exists(dst_path):
             shutil.copyfile(src_path, dst_path)
