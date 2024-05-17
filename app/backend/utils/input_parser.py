@@ -42,4 +42,4 @@ class InputParser:
         if min_value is not None and max_value is not None:    
             value_mm = max(min_value, min(value_mm, max_value))
 
-        return value
+        return value_mm

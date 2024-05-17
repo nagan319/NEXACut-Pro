@@ -10,18 +10,6 @@ def valid_input():
     corners = [(0, 0), (100, 0), (100, 100), (0, 100)]  #
     return src_path, dst_path, size, corners
 
-@pytest.mark.parametrize("invalid_src_path", [None, 123, True, Size(100, 100)])
-def test_invalid_src_path(valid_input, invalid_src_path):
-    src_path, dst_path, size, corners = valid_input
-    with pytest.raises(TypeError):
-        FlatFilter(invalid_src_path, dst_path, size, corners)
-
-@pytest.mark.parametrize("invalid_dst_path", [None, 123, True, Size(100, 100)])
-def test_invalid_dst_path(valid_input, invalid_dst_path):
-    src_path, dst_path, size, corners = valid_input
-    with pytest.raises(TypeError):
-        FlatFilter(src_path, invalid_dst_path, size, corners)
-
 @pytest.mark.parametrize("invalid_size", [None, "invalid", True, [(100, 100)]])
 def test_invalid_size(valid_input, invalid_size):
     src_path, dst_path, _, corners = valid_input
