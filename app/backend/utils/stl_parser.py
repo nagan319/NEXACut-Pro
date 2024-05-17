@@ -96,98 +96,98 @@ class STLParser:
         self.parsing_complete = True
 
     @staticmethod
-    def stl_file_valid(filepath):
+    def stl_file_valid(filepath: str) -> bool:
         """
         Check if an STL file is valid.
 
-        - filepath: The path to the STL file.
+        - filepath: Path to the STL file.
 
         Returns:
-        - True if the file is a valid STL file, otherwise False.
+        - True if the STL file is valid, False otherwise.
         """
-        try: 
+        try:
             mesh.Mesh.from_file(filepath)
             return True
         except Exception:
             return False
 
     @staticmethod
-    def stl_mesh_valid(stl_mesh):
+    def stl_mesh_valid(stl_mesh: np.array) -> bool:
         """
         Check if an STL mesh is valid.
 
-        - stl_mesh: The STL mesh array.
+        - stl_mesh: The STL mesh to validate.
 
         Returns:
-        - True if the mesh is valid, otherwise False.
+        - True if the STL mesh is valid, False otherwise.
         """
         return len(stl_mesh.shape) == 3 and stl_mesh.shape[1:] == (3, 3)
 
     @staticmethod
-    def get_flat_axis(stl_mesh, tolerance=MIN_QUANTIZED_VALUE_DECIMALS):
+    def get_flat_axis(stl_mesh: np.array, tolerance: int = MIN_QUANTIZED_VALUE_DECIMALS) -> Axis:
         """
-        Determine the flat axis of an STL mesh.
+        Get the flat axis of an STL mesh.
 
-        - stl_mesh: The STL mesh array.
-        - tolerance: The tolerance for rounding coordinates.
+        - stl_mesh: The STL mesh.
+        - tolerance: Tolerance for rounding coordinates.
 
         Returns:
-        - The flat axis as an Axis object.
+        - The flat axis as an Axis enum.
         """
         coordinates = np.round([stl_mesh[:, :, i] for i in range(3)], tolerance)
-        unique_counts = [np.unique(coordinates[i]).size for i in range(3)] 
+        unique_counts = [np.unique(coordinates[i]).size for i in range(3)]
         flat_axis_index = np.argmin(unique_counts)
         return Axis(flat_axis_index)
 
     @staticmethod
-    def get_thickness(stl_mesh, flat_axis, tolerance=MIN_QUANTIZED_VALUE_DECIMALS):
+    def get_thickness(stl_mesh: np.array, flat_axis: Axis, tolerance: int = MIN_QUANTIZED_VALUE_DECIMALS) -> float:
         """
-        Calculate the thickness of an STL mesh along the flat axis.
+        Get the thickness of an STL mesh along a flat axis.
 
-        - stl_mesh: The STL mesh array.
-        - flat_axis: The flat axis as an Axis object.
-        - tolerance: The tolerance for rounding coordinates.
+        - stl_mesh: The STL mesh.
+        - flat_axis: The flat axis as an Axis enum.
+        - tolerance: Tolerance for rounding coordinates.
 
         Returns:
         - The thickness as a float.
         """
         flat_axis_coordinates = np.round(stl_mesh[:, :, flat_axis.value], tolerance)
         unique_points = np.unique(flat_axis_coordinates)
-        thickness = max(unique_points) - min(unique_points) 
+        thickness = max(unique_points) - min(unique_points)
         return float(thickness)
 
     @staticmethod
-    def get_flattened_mesh(stl_mesh, flat_axis, tolerance=MIN_QUANTIZED_VALUE):
+    def get_flattened_mesh(stl_mesh: np.array, flat_axis: Axis, tolerance: float = MIN_QUANTIZED_VALUE) -> np.array:
         """
-        Flatten the STL mesh along the flat axis.
+        Get a flattened version of an STL mesh along a flat axis.
 
-        - stl_mesh: The STL mesh array.
-        - flat_axis: The flat axis as an Axis object.
-        - tolerance: The tolerance for considering a facet flat.
+        - stl_mesh: The STL mesh.
+        - flat_axis: The flat axis as an Axis enum.
+        - tolerance: Tolerance for considering points as flat.
 
         Returns:
-        - The flattened mesh array.
+        - A flattened STL mesh as a numpy array.
         """
         if flat_axis not in Axis:
             raise ValueError(f"Invalid axis {flat_axis}")
         if tolerance <= 0:
             raise ValueError("Tolerance must be positive value")
-        
+
         absolute_values = np.abs(stl_mesh[:, :, flat_axis.value])
         mask = np.all(absolute_values <= tolerance, axis=1)
-        flattened_mesh = stl_mesh[mask]  
+        flattened_mesh = stl_mesh[mask]
         return flattened_mesh
 
     @staticmethod
-    def get_outer_edges(flattened_mesh, flat_axis):
+    def get_outer_edges(flattened_mesh: np.array, flat_axis: Axis) -> List[EdgeShape]:
         """
         Get the outer edges of a flattened STL mesh.
 
-        - flattened_mesh: The flattened STL mesh array.
-        - flat_axis: The flat axis as an Axis object.
+        - flattened_mesh: The flattened STL mesh.
+        - flat_axis: The flat axis as an Axis enum.
 
         Returns:
-        - A list of outer edges as tuples.
+        - A list of outer edges as EdgeShape tuples.
         """
         if flat_axis not in Axis:
             raise ValueError(f"Invalid axis {flat_axis}")
@@ -195,8 +195,8 @@ class STLParser:
         edges = []
 
         for facet in flattened_mesh:
-            for i in range(3): 
-                point1 = [facet[i][j] for j in range(3) if j != flat_axis.value] 
+            for i in range(3):
+                point1 = [facet[i][j] for j in range(3) if j != flat_axis.value]
                 point2 = [facet[(i+1)%3][j] for j in range(3) if j != flat_axis.value]
                 edge = tuple(sorted([tuple(point1), tuple(point2)]))
                 edges.append(edge)
@@ -204,16 +204,16 @@ class STLParser:
         edge_counts = defaultdict(int)
         for edge in edges:
             edge_counts[edge] += 1
-        
-        outer_edges = [edge for edge, count in edge_counts.items() if count == 1] 
-        return outer_edges 
+
+        outer_edges = [edge for edge, count in edge_counts.items() if count == 1]
+        return outer_edges
 
     @staticmethod
-    def get_contours(outer_edges):
+    def get_contours(outer_edges: List[EdgeShape]) -> List[np.array]:
         """
-        Get the contours from outer edges.
+        Get contours from a list of outer edges.
 
-        - outer_edges: A list of outer edges as tuples.
+        - outer_edges: A list of outer edges as EdgeShape tuples.
 
         Returns:
         - A list of contours as numpy arrays.
@@ -221,7 +221,7 @@ class STLParser:
         points = defaultdict(list)
 
         for edge in outer_edges:
-            for i, point in enumerate(edge): 
+            for i, point in enumerate(edge):
                 points[point].append(edge[(i+1)%2])
 
         contours = []
@@ -231,20 +231,20 @@ class STLParser:
             current_contour = []
             while True:
                 current_contour.append(list(point))
-                next_point_options = points[point] 
-                next_point = next_point_options[0] 
-                points.pop(point) 
+                next_point_options = points[point]
+                next_point = next_point_options[0]
+                points.pop(point)
                 iter_list.remove(point)
-                if not points[next_point]: 
+                if not points[next_point]:
                     break
-                points[next_point].remove(point) 
+                points[next_point].remove(point)
                 point = next_point
             contours.append(np.array(current_contour))
 
         return contours
 
     @staticmethod
-    def get_outermost_contour(contours):
+    def get_outermost_contour(contours: List[np.array]) -> np.array:
         """
         Get the outermost contour from a list of contours.
 
@@ -256,7 +256,7 @@ class STLParser:
         max_area = 0
         outermost_contour = None
 
-        for contour in contours: 
+        for contour in contours:
             min_x, max_x, min_y, max_y = STLParser._get_bounding_box(contour)
             area = (max_x - min_x) * (max_y - min_y)
             if area > max_area:
@@ -264,25 +264,25 @@ class STLParser:
                 outermost_contour = contour
 
         return outermost_contour
-    
+
     @staticmethod
-    def _get_bounding_box(contour):
+    def _get_bounding_box(contour: np.array) -> np.array:
         """
         Get the bounding box of a contour.
 
         - contour: The contour as a numpy array.
 
         Returns:
-        - The bounding box as a numpy array.
+        - The bounding box as a numpy array [min_x, max_x, min_y, max_y].
         """
         min_x, max_x = np.min(contour[:, 0]), np.max(contour[:, 0])
         min_y, max_y = np.min(contour[:, 1]), np.max(contour[:, 1])
         return np.array([min_x, max_x, min_y, max_y])
 
     @staticmethod
-    def get_smooth_contour(contour):
+    def get_smooth_contour(contour: np.array) -> np.array:
         """
-        Smooth a contour by removing and adding points.
+        Get a smoothed contour by removing and adding points.
 
         - contour: The contour as a numpy array.
 
@@ -294,9 +294,9 @@ class STLParser:
         return contour
 
     @staticmethod
-    def _remove_contour_points(contour):
+    def _remove_contour_points(contour: np.array) -> np.array:
         """
-        Remove unnecessary points from a contour.
+        Remove points from a contour to smooth it.
 
         - contour: The contour as a numpy array.
 
@@ -317,7 +317,7 @@ class STLParser:
         return np.array(new_contour)
 
     @staticmethod
-    def _add_contour_points(contour):
+    def _add_contour_points(contour: np.array) -> np.array:
         """
         Add points to a contour to smooth it.
 
@@ -328,7 +328,7 @@ class STLParser:
         """
         new_contour = []
 
-        contour = tuple(map(tuple, contour)) 
+        contour = tuple(map(tuple, contour))
 
         for i in range(len(contour)):
             point_a = np.array(contour[i])
@@ -337,7 +337,7 @@ class STLParser:
 
             curr_point = point_a
             while True:
-                distance =  np.linalg.norm(point_b-curr_point)
+                distance = np.linalg.norm(point_b-curr_point)
                 if distance < 2 * MIN_POINT_DISTANCE:
                     new_contour.append(tuple(point_b))
                     break
@@ -346,13 +346,13 @@ class STLParser:
 
         return np.array(new_contour)
 
-    def save_image(self, scale_factor=1, figsize=(3.9, 3.75), dpi=80):
+    def save_image(self, scale_factor: float = 1, figsize: tuple = (3.9, 3.75), dpi: int = 80):
         """
-        Save an image of the STL mesh.
+        Save an image of the parsed STL file.
 
-        - scale_factor: The scale factor for the image.
-        - figsize: The size of the figure.
-        - dpi: The resolution of the image.
+        - scale_factor: Factor to scale the image.
+        - figsize: Size of the figure (width, height).
+        - dpi: Dots per inch for the saved image.
         """
         if not self.parsing_complete or os.path.exists(self.dst_path):
             return
@@ -369,15 +369,16 @@ class STLParser:
         plt.xlabel('Z: ' + str(self.thickness) + ' mm', fontsize=10, labelpad=5, horizontalalignment='center')
 
         plt.grid(True)
-        plt.gca().set_facecolor(STLParser.BG_COLOR) 
-        plt.gca().set_aspect('equal') 
+        plt.gca().set_facecolor(STLParser.BG_COLOR)
+        plt.gca().set_aspect('equal')
         plt.grid(False)
-        plt.tick_params(axis='x', colors=STLParser.TEXT_COLOR)  
-        plt.tick_params(axis='y', colors=STLParser.TEXT_COLOR) 
+        plt.tick_params(axis='x', colors=STLParser.TEXT_COLOR)
+        plt.tick_params(axis='y', colors=STLParser.TEXT_COLOR)
 
-        plt.gca().spines['top'].set_color(STLParser.TEXT_COLOR) 
+        plt.gca().spines['top'].set_color(STLParser.TEXT_COLOR)
         plt.gca().spines['bottom'].set_color(STLParser.TEXT_COLOR)
         plt.gca().spines['left'].set_color(STLParser.TEXT_COLOR)
         plt.gca().spines['right'].set_color(STLParser.TEXT_COLOR)
 
         plt.savefig(self.dst_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
+        

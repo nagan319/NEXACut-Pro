@@ -1,5 +1,9 @@
 import os
 
+"""
+Application constants and filepaths.
+"""
+
 # global constants
 MIN_WIDTH = 1200
 MIN_HEIGHT = 1000

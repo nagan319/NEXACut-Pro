@@ -1,13 +1,38 @@
 class Size:
+    """
+    Class to represent dimensions with width and height.
+
+    ### Parameters:
+    - width
+    - height
+    """
 
     def __init__(self, width: float, height: float):
         self.w = width
         self.h = height
 
     def get_scaled(self, factor: float):
+        """
+        Gets a new Size object scaled by a given factor.
+
+        - factor: The factor by which to scale the size.
+
+        Returns:
+        - A new Size object with scaled dimensions.
+        """
         return Size(self.w * factor, self.h * factor)
 
 class Colors:
+    """
+    A class to manage colors for different elements.
+
+    ### Parameters (kwargs):
+    - bg_col: Background color, defaults to (255, 255, 255).
+    - ctr_col: Contour color, defaults to (0, 0, 0).
+    - select_elem_col: Selected element color, defaults to (0, 0, 255).
+    - plate_col: Plate edge color, defaults to (55, 55, 55).
+    - corner_col: Corner color, defaults to (255, 0, 0).
+    """
 
     DEFAULT_COLORS = {
     'background_color': (255, 255, 255),
