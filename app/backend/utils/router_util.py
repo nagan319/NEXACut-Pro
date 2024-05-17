@@ -6,11 +6,9 @@ from ...config import ROUTER_PREVIEW_DATA_PATH
 
 class RouterUtil: 
 
-    '''
-    Contains functions for creating and modifying router data
-    '''
-
-    # all constants in mm
+    """
+    Functional class for creating and modifying router data. All constants are stored in millimeters.
+    """
 
     ROUTER_MAX_DIMENSION = 5000 
     PLATE_MAX_DIMENSION = 5000
@@ -37,6 +35,9 @@ class RouterUtil:
 
     @staticmethod
     def editable_keys() -> List[str]:
+        """
+        Returns a list of editable keys for routers. 
+        """
         return [
             "machineable_area_(x-axis)",
             "machineable_area_(y-axis)",
@@ -51,6 +52,9 @@ class RouterUtil:
 
     @staticmethod
     def value_ranges() -> Dict[str, Any]: 
+        """
+        Returns a list of value ranges for relevant router parameters.
+        """
         return {
             "machineable_area_(x-axis)": (0, RouterUtil.ROUTER_MAX_DIMENSION), 
             "machineable_area_(y-axis)": (0, RouterUtil.ROUTER_MAX_DIMENSION), 
@@ -65,6 +69,15 @@ class RouterUtil:
            
     @staticmethod
     def get_new_router(router_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Returns a new router based on existing routers.
+
+        Arguments:
+        - router_data: List of existing routers, necessary for getting next router's index.
+
+        Returns:
+        - New router as a dictionary
+        """
         id = RouterUtil._get_next_router_id(router_data)
         preview_path = RouterUtil.get_preview_path(id)
         return {
@@ -76,6 +89,9 @@ class RouterUtil:
 
     @staticmethod
     def _get_default_dimensions() -> Dict[str, Any]:
+        """
+        Returns a list of default dimensions for routers.
+        """
         return {
             "machineable_area_(x-axis)": RouterUtil.ROUTER_DEFAULT_X, 
             "machineable_area_(y-axis)": RouterUtil.ROUTER_DEFAULT_Y, 
@@ -90,17 +106,42 @@ class RouterUtil:
 
     @staticmethod
     def _get_next_router_id(router_data: List[Dict[str, Any]]) -> int: 
+        """
+        Gets the next available router id.
+
+        Arguments:
+        - router_data: List of existing routers.
+
+        Returns:
+        - Next available index.
+        """
         router_ids = [router.get('id') for router in router_data]
         return max(router_ids) + 1 if router_ids else 0
 
     @staticmethod
     def get_preview_path(id: int) -> str:
+        """
+        Gets the image preview path for the router with the given id.
+
+        Arguments:
+        - id: Target router id.
+
+        Returns:
+        - Preview path for router.
+        """
         preview_path = os.path.join(ROUTER_PREVIEW_DATA_PATH, str(id)+'.png')
         return preview_path
     
     @staticmethod
     def save_router_preview(router_data: Dict[str, Any], figsize: tuple = (8, 8), dpi: int = 80):
+        """
+        Saves preview image for a router using matplotlib.
 
+        Arguments:
+        - router_data: Data for router to be saved in dict format.
+        - figsize: width, height in inches (defaults to 4x4).
+        - dpi: pixels per inch (defaults to 80).
+        """
         try:
             image_path = router_data.get('preview_path')
             router_xy = (router_data.get("machineable_area_(x-axis)"), router_data.get("machineable_area_(y-axis)"))
@@ -142,6 +183,19 @@ class RouterUtil:
     
     @staticmethod
     def _generate_rectangle_coordinates(width: float, height: float, offset_x: float = 0, offset_y: float = 0):
+        """
+        Gets rectangle coordinates given width, height, and offset.
+
+        Arguments:
+        - width
+        - height
+        - offset_x
+        - offset_y
+        All arguments are floating point values.
+
+        Returns:
+        - Tuple of x and y coordinates in plotting format.
+        """
         x_coordinates = [offset_x, offset_x + width, offset_x + width, offset_x, offset_x]
         y_coordinates = [offset_y, offset_y, offset_y + height, offset_y + height, offset_y]
         return x_coordinates, y_coordinates

@@ -12,10 +12,9 @@ class PlateFileWidget(QWidget):
     deleteRequested = pyqtSignal(str)
     importRequested = pyqtSignal(str)
 
-    def __init__(self, plate_util: PlateUtil, data: dict):
+    def __init__(self, data: dict):
         super().__init__()
 
-        self.plate_util = plate_util
         self.data = data
 
         self._setup_ui()
@@ -49,7 +48,7 @@ class PlateFileWidget(QWidget):
         return image_button_container
 
     def _get_data_widget(self) -> QWidget:
-        data_widget = DataWidget(self.data, self.plate_util.editable_keys, self.plate_util.value_ranges, False, True)
+        data_widget = DataWidget(self.data, PlateUtil.editable_keys(), PlateUtil.value_ranges(), False, True)
         data_widget.deleteRequested.connect(self.__on_delete_requested)
         data_widget.saveRequested.connect(self.__on_save_requested)
         return data_widget
@@ -60,7 +59,7 @@ class PlateFileWidget(QWidget):
         self._update_preview()
 
     def _update_preview(self):
-        self.plate_util.save_preview_image(self.data)
+        PlateUtil.save_preview_image(self.data)
         self.preview_widget.update()
 
     def __on_import_requested(self):

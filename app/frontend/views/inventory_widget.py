@@ -17,41 +17,39 @@ class InventoryWidget(WidgetTemplate):
     def __init__(self, plate_data: list, plate_limit: int):
         super().__init__()
 
-        self.plate_util = PlateUtil(PLATE_PREVIEW_DATA_PATH)
-
         self.plate_data = plate_data
         self.plate_limit = plate_limit
         self.image_editor_active = False
 
-        self.__init_gui__()
+        self._setup_ui()
 
-    def __init_gui__(self):
+    def _setup_ui(self):
 
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
-        self.plate_widgets = [PlateFileWidget(self.plate_util, plate) for plate in self.plate_data]
+        self.plate_widgets = [PlateFileWidget(plate) for plate in self.plate_data]
 
         for widget in self.plate_widgets:
             widget.deleteRequested.connect(self.__on_plate_delete_requested__)
             widget.importRequested.connect(self.__on_plate_import_image_requested__)
 
-        self.__file_preview_widget = WidgetViewer(3, 1, self.plate_widgets) 
+        self._file_preview_widget = WidgetViewer(3, 1, self.plate_widgets) 
 
-        self.__add_new_button_wrapper = QWidget()
-        self.__add_new_button_wrapper_layout = QHBoxLayout()
+        add_new_button_wrapper = QWidget()
+        add_new_button_wrapper_layout = QHBoxLayout()
 
-        self.__add_new_button = QPushButton()
-        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.clicked.connect(self.add_new_plate)
+        self._add_new_button = QPushButton()
+        Style.apply_stylesheet(self._add_new_button, "generic-button.css")
+        self._add_new_button.clicked.connect(self.add_new_plate)
 
-        self.__add_new_button_wrapper_layout.addStretch(2)
-        self.__add_new_button_wrapper_layout.addWidget(self.__add_new_button, 1)
-        self.__add_new_button_wrapper_layout.addStretch(2)
-        self.__add_new_button_wrapper.setLayout(self.__add_new_button_wrapper_layout)
+        add_new_button_wrapper_layout.addStretch(2)
+        add_new_button_wrapper_layout.addWidget(self._add_new_button, 1)
+        add_new_button_wrapper_layout.addStretch(2)
+        add_new_button_wrapper.setLayout(add_new_button_wrapper_layout)
 
-        main_layout.addWidget(self.__file_preview_widget, 7)
-        main_layout.addWidget(self.__add_new_button_wrapper, 1)
+        main_layout.addWidget(self._file_preview_widget, 7)
+        main_layout.addWidget(add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
         Style.apply_stylesheet(main_widget, "light.css")
@@ -64,15 +62,15 @@ class InventoryWidget(WidgetTemplate):
             return
 
         if self._get_plate_amount() < self.plate_limit:
-            new_plate_data = self.plate_util.get_new_plate(self.plate_data)
+            new_plate_data = PlateUtil.get_new_plate(self.plate_data)
             self.plate_data.append(new_plate_data)
             
-            self.plate_util.save_preview_image(new_plate_data)
+            PlateUtil.save_preview_image(new_plate_data)
 
-            new_plate_widget = PlateFileWidget(self.plate_util, new_plate_data)
+            new_plate_widget = PlateFileWidget(new_plate_data)
             new_plate_widget.deleteRequested.connect(self.__on_plate_delete_requested__)
             new_plate_widget.importRequested.connect(self.__on_plate_import_image_requested__)
-            self.__file_preview_widget.append_widgets([new_plate_widget])
+            self._file_preview_widget.append_widgets([new_plate_widget])
             self._update_add_button_text()       
 
     def _get_idx_of_filename(self, filename: str):
@@ -86,10 +84,10 @@ class InventoryWidget(WidgetTemplate):
 
     def _update_add_button_text(self):
         if self._get_plate_amount() >= self.plate_limit:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
+            Style.apply_stylesheet(self._add_new_button, "generic-button-red.css")
         else:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
+            Style.apply_stylesheet(self._add_new_button, "generic-button.css")
+        self._add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
 
     def __on_plate_import_image_requested__(self, filename: str):
         if self.image_editor_active:
@@ -109,7 +107,7 @@ class InventoryWidget(WidgetTemplate):
     def __on_image_editor_closed__(self, filename: str, contours: list): 
         plate_idx = self._get_idx_of_filename(filename)
         self.plate_data[plate_idx]['contours'] = self._serialize_contours(contours)
-        self.plate_util.save_preview_image(self.plate_data[plate_idx])
+        PlateUtil.save_preview_image(self.plate_data[plate_idx])
         self.plate_widgets[plate_idx].update_image_preview()
         self.image_editor_active = False
 
@@ -130,6 +128,6 @@ class InventoryWidget(WidgetTemplate):
         file_processor.remove_file(png_path)
 
         self.plate_data.pop(index)
-        self.__file_preview_widget.pop_widget(index)
+        self._file_preview_widget.pop_widget(index)
         self._update_add_button_text()
 

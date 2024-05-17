@@ -5,9 +5,23 @@ import csv
 from typing import List, Dict, Union, Any
 
 class FileProcessor:
+    """
+    Functional class to read from and write to files in various formats.
+    """
 
     @staticmethod
-    def read_file(filepath: str) -> Union[List[Dict[str, Any]], Dict[str, Any]]:
+    def read_file(filepath):
+        """
+        Read data from a file.
+
+        Arguments:
+        - filepath: The path to the file to be read.
+
+        Returns:
+        - The data read from the file.
+            Returns a list of dictionaries if the file is a CSV, or a dictionary if the file is JSON.
+            Returns None if the file does not exist.
+        """
         _, extension = os.path.splitext(filepath)
 
         if not os.path.exists(filepath):
@@ -18,20 +32,46 @@ class FileProcessor:
             return FileProcessor._read_json(filepath)
 
     @staticmethod
-    def _read_csv(filepath: str) -> List[Dict[str, Any]]:
+    def _read_csv(filepath):
+        """
+        Read data from a CSV file.
+
+        Arguments:
+        - filepath: The path to the CSV file to be read.
+
+        Returns:
+        - The data read from the CSV file as a list of dictionaries.
+        """
         with open(filepath, mode='r', newline='') as file:
             reader = csv.DictReader(file)
             data = list(reader)    
         return data
 
     @staticmethod
-    def _read_json(filepath: str) -> Dict[str, Any]:
+    def _read_json(filepath):
+        """
+        Read data from a JSON file.
+
+        Arguments:
+        - filepath: The path to the JSON file to be read.
+
+        Returns:
+        - The data read from the JSON file as a dictionary.
+        """
         with open(filepath, 'r') as file:
             data = json.load(file)
         return data
 
     @staticmethod
-    def write_file(filepath: str, data, format='csv'):
+    def write_file(filepath, data, format='csv'):
+        """
+        Write data to a file.
+
+        Arguments:
+        - filepath: The path to the file to write the data to.
+        - data: The data to be written to the file.
+        - format: The format of the file ('csv' or 'json'). Defaults to 'csv'.
+        """
         _, extension = os.path.splitext(filepath)
 
         if extension.lower() == '.csv' and format == 'csv':
@@ -42,24 +82,48 @@ class FileProcessor:
             return
 
     @staticmethod
-    def _write_csv(filepath: str, data: list):
+    def _write_csv(filepath, data):
+        """
+        Write data to a CSV file.
+
+        Arguments:
+        - filepath: The path to the CSV file to write the data to.
+        - data: The data to be written to the CSV file as a list of dictionaries.
+        """
         with open(filepath, mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames=data[0].keys())
             writer.writeheader()
             writer.writerows(data)
 
     @staticmethod
-    def _write_json(filepath: str, data: dict):
+    def _write_json(filepath, data):
+        """
+        Write data to a JSON file.
+
+        Arguments:
+        - filepath: The path to the JSON file to write the data to.
+        - data: The data to be written to the JSON file as a dictionary.
+        """
         with open(filepath, 'w') as file:
             json.dump(data, file, indent=4)
 
     @staticmethod
-    def read_all_json_in_folder(folder_path: str) -> List[Dict[str, Any]]:
+    def read_all_json_in_folder(folder_path):
+        """
+        Read data from all JSON files in a folder.
+
+        Arguments:
+        - folder_path: The path to the folder containing JSON files.
+
+        Returns:
+        - The data read from all JSON files in the folder as a list of dictionaries.
+            Returns None if the folder does not exist.
+        """
         if not os.path.exists(folder_path):
             return
 
         data = []
-        files: list[str] = FileProcessor.get_all_filenames_in_folder(folder_path)
+        files = FileProcessor.get_all_filenames_in_folder(folder_path)
 
         for filename in files:
             _, extension = os.path.splitext(filename)
@@ -71,7 +135,14 @@ class FileProcessor:
         return data
 
     @staticmethod
-    def write_multiple_json_to_folder(data: list, folder_path: str):
+    def write_multiple_json_to_folder(data, folder_path):
+        """
+        Write multiple dictionaries to separate JSON files in a folder.
+
+        Arguments:
+        - data: A list of dictionaries, where each dictionary represents data to be written to a JSON file.
+        - folder_path: The path to the folder where JSON files will be written.
+        """
         if not os.path.exists(folder_path):
             return
         
@@ -91,13 +162,29 @@ class FileProcessor:
             FileProcessor._write_json(filepath, item)
 
     @staticmethod
-    def get_all_filenames_in_folder(filepath: str) -> List[str]: 
+    def get_all_filenames_in_folder(filepath):
+        """
+        Get a list of all filenames in a folder.
+
+        Arguments:
+        - filepath: The path to the folder.
+
+        Returns:
+        - A list of filenames in the folder.
+        """
         if not os.path.exists(filepath):
             return []
         return os.listdir(filepath)
     
     @staticmethod
-    def clear_folder_contents(dirpath: str, *exceptions: str):
+    def clear_folder_contents(dirpath, *exceptions):
+        """
+        Clear the contents of a folder, excluding specified filenames.
+
+        Arguments:
+        - dirpath: The path to the folder to clear.
+        - *exceptions: Filenames to exclude from deletion.
+        """
         if not os.path.exists(dirpath):
             return
         
@@ -107,12 +194,25 @@ class FileProcessor:
                 os.remove(filepath)
 
     @staticmethod
-    def remove_file(filepath: str):
+    def remove_file(filepath):
+        """
+        Remove a file.
+
+        Arguments:
+        - filepath: The path to the file to be removed.
+        """
         if not (os.path.exists(filepath)):
             return
         os.remove(filepath)
 
     @staticmethod
-    def copy_file(src_path: str, dst_path: str):
+    def copy_file(src_path, dst_path):
+        """
+        Copy a file from source to destination.
+
+        Arguments:
+        - src_path: The path to the source file.
+        - dst_path: The path to the destination file.
+        """
         if os.path.exists(src_path) and not os.path.exists(dst_path):
             shutil.copyfile(src_path, dst_path)

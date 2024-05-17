@@ -21,24 +21,30 @@ class Axis(Enum):
     Z = 2
 
 class STLParser: 
-    '''
+    """
     Converts a valid STL file into a numpy ndarray consisting of a reasonable number of points for use in a 2D packing algorithm.
     Utilizes the Mesh class from the numpy-stl library for processing.
     The mesh is converted to vector format during initialization, resulting in a shape of (Nfacets, Nvertices == 3, Ncoordinates == 3).
     
-    Criteria for a valid STL file:
+    ### Criteria for a valid STL file:
     - Must be in ASCII format.
     - File must represent a single 2D shape extruded along a third axis, which aligns with the x, y, or z axis.
     - Files with improper orientation may produce erroneous results (a stricter check will be added in future versions).
 
-    Output values:
+    ### Attributes:
     - Flat axis (int in range 0-2): Represents the axis along which there is a minimum number of unique points, rounded to a tolerance threshold.    
     - Thickness (float): Represents the distance between the minimum and maximum point along the flat axis.
     - Flattened mesh (np array): Represents the mesh with all coordinates along the flat axis set to 0.
     - Outer edges (list of tuples): Represents an unsorted list of the outer edges of the polygon.
-    - Outer contour (np array): Contour created frmo edges with largest bounding box
-    The outer contour is refined to include an amount of vertices appropriate for processing
-    '''
+    - Outer contour (np array): Contour created from edges with largest bounding box
+    The outer contour is refined to include an amount of vertices appropriate for processing.
+
+    ### Raises:
+    - FileNotFoundError if file path is invalid.
+    - FileNotFoundError if destination folder path is not found.
+    - ValueError if STL file is invalid. 
+    - ValueError if STL mesh is invalid. 
+    """
 
     BG_COLOR: str = "#ffffff"
     TEXT_COLOR: str = '#000000'
@@ -76,6 +82,9 @@ class STLParser:
         self.dst_path = os.path.join(dst_folder, os.path.basename(self.stl_filepath)+'.png') 
 
     def parse_stl(self):
+        """"
+        Parses STL file and sets class attributes
+        """
         self.logger.info("Parsing STL file...")
         self.flat_axis: Axis = STLParser.get_flat_axis(self.stl_mesh_vector)
         self.thickness: float = STLParser.get_thickness(self.stl_mesh_vector, self.flat_axis)
@@ -87,7 +96,15 @@ class STLParser:
         self.parsing_complete = True
 
     @staticmethod
-    def stl_file_valid(filepath: str) -> bool:
+    def stl_file_valid(filepath):
+        """
+        Check if an STL file is valid.
+
+        - filepath: The path to the STL file.
+
+        Returns:
+        - True if the file is a valid STL file, otherwise False.
+        """
         try: 
             mesh.Mesh.from_file(filepath)
             return True
@@ -95,25 +112,62 @@ class STLParser:
             return False
 
     @staticmethod
-    def stl_mesh_valid(stl_mesh: np.array) -> bool:
+    def stl_mesh_valid(stl_mesh):
+        """
+        Check if an STL mesh is valid.
+
+        - stl_mesh: The STL mesh array.
+
+        Returns:
+        - True if the mesh is valid, otherwise False.
+        """
         return len(stl_mesh.shape) == 3 and stl_mesh.shape[1:] == (3, 3)
 
-    @staticmethod # assumes valid mesh
-    def get_flat_axis(stl_mesh: np.array, tolerance: int = MIN_QUANTIZED_VALUE_DECIMALS) -> Axis:
+    @staticmethod
+    def get_flat_axis(stl_mesh, tolerance=MIN_QUANTIZED_VALUE_DECIMALS):
+        """
+        Determine the flat axis of an STL mesh.
+
+        - stl_mesh: The STL mesh array.
+        - tolerance: The tolerance for rounding coordinates.
+
+        Returns:
+        - The flat axis as an Axis object.
+        """
         coordinates = np.round([stl_mesh[:, :, i] for i in range(3)], tolerance)
         unique_counts = [np.unique(coordinates[i]).size for i in range(3)] 
         flat_axis_index = np.argmin(unique_counts)
         return Axis(flat_axis_index)
 
-    @staticmethod # assumes valid mesh
-    def get_thickness(stl_mesh: np.array, flat_axis: Axis, tolerance: int = MIN_QUANTIZED_VALUE_DECIMALS) -> float:
+    @staticmethod
+    def get_thickness(stl_mesh, flat_axis, tolerance=MIN_QUANTIZED_VALUE_DECIMALS):
+        """
+        Calculate the thickness of an STL mesh along the flat axis.
+
+        - stl_mesh: The STL mesh array.
+        - flat_axis: The flat axis as an Axis object.
+        - tolerance: The tolerance for rounding coordinates.
+
+        Returns:
+        - The thickness as a float.
+        """
         flat_axis_coordinates = np.round(stl_mesh[:, :, flat_axis.value], tolerance)
         unique_points = np.unique(flat_axis_coordinates)
         thickness = max(unique_points) - min(unique_points) 
         return float(thickness)
 
-    @staticmethod # assumes valid mesh
-    def get_flattened_mesh(stl_mesh: np.array, flat_axis: Axis, tolerance: float = MIN_QUANTIZED_VALUE) -> np.array: 
+    @staticmethod
+    def get_flattened_mesh(stl_mesh, flat_axis, tolerance=MIN_QUANTIZED_VALUE):
+        """
+        Flatten the STL mesh along the flat axis.
+
+        - stl_mesh: The STL mesh array.
+        - flat_axis: The flat axis as an Axis object.
+        - tolerance: The tolerance for considering a facet flat.
+
+        Returns:
+        - The flattened mesh array.
+        """
         if flat_axis not in Axis:
             raise ValueError(f"Invalid axis {flat_axis}")
         if tolerance <= 0:
@@ -124,8 +178,17 @@ class STLParser:
         flattened_mesh = stl_mesh[mask]  
         return flattened_mesh
 
-    @staticmethod # assumes valid mesh
-    def get_outer_edges(flattened_mesh: np.array, flat_axis: Axis) -> List[EdgeShape]:
+    @staticmethod
+    def get_outer_edges(flattened_mesh, flat_axis):
+        """
+        Get the outer edges of a flattened STL mesh.
+
+        - flattened_mesh: The flattened STL mesh array.
+        - flat_axis: The flat axis as an Axis object.
+
+        Returns:
+        - A list of outer edges as tuples.
+        """
         if flat_axis not in Axis:
             raise ValueError(f"Invalid axis {flat_axis}")
 
@@ -138,7 +201,7 @@ class STLParser:
                 edge = tuple(sorted([tuple(point1), tuple(point2)]))
                 edges.append(edge)
 
-        edge_counts = defaultdict(int) # outer edges are only part of one facet
+        edge_counts = defaultdict(int)
         for edge in edges:
             edge_counts[edge] += 1
         
@@ -146,9 +209,16 @@ class STLParser:
         return outer_edges 
 
     @staticmethod
-    def get_contours(outer_edges: List[EdgeShape]) -> List[np.array]:
+    def get_contours(outer_edges):
+        """
+        Get the contours from outer edges.
 
-        points = defaultdict(list) 
+        - outer_edges: A list of outer edges as tuples.
+
+        Returns:
+        - A list of contours as numpy arrays.
+        """
+        points = defaultdict(list)
 
         for edge in outer_edges:
             for i, point in enumerate(edge): 
@@ -174,7 +244,15 @@ class STLParser:
         return contours
 
     @staticmethod
-    def get_outermost_contour(contours: List[np.array]) -> np.array: 
+    def get_outermost_contour(contours):
+        """
+        Get the outermost contour from a list of contours.
+
+        - contours: A list of contours as numpy arrays.
+
+        Returns:
+        - The outermost contour as a numpy array.
+        """
         max_area = 0
         outermost_contour = None
 
@@ -188,19 +266,43 @@ class STLParser:
         return outermost_contour
     
     @staticmethod
-    def _get_bounding_box(contour: np.array) -> np.array:
+    def _get_bounding_box(contour):
+        """
+        Get the bounding box of a contour.
+
+        - contour: The contour as a numpy array.
+
+        Returns:
+        - The bounding box as a numpy array.
+        """
         min_x, max_x = np.min(contour[:, 0]), np.max(contour[:, 0])
         min_y, max_y = np.min(contour[:, 1]), np.max(contour[:, 1])
         return np.array([min_x, max_x, min_y, max_y])
 
     @staticmethod
-    def get_smooth_contour(contour: np.array) -> np.array: 
+    def get_smooth_contour(contour):
+        """
+        Smooth a contour by removing and adding points.
+
+        - contour: The contour as a numpy array.
+
+        Returns:
+        - The smoothed contour as a numpy array.
+        """
         contour = STLParser._remove_contour_points(contour)
         contour = STLParser._add_contour_points(contour)
         return contour
 
     @staticmethod
-    def _remove_contour_points(contour: np.array) -> np.array: 
+    def _remove_contour_points(contour):
+        """
+        Remove unnecessary points from a contour.
+
+        - contour: The contour as a numpy array.
+
+        Returns:
+        - The contour with points removed as a numpy array.
+        """
         new_contour = [contour[0]]
 
         point_a = contour[0]
@@ -215,7 +317,15 @@ class STLParser:
         return np.array(new_contour)
 
     @staticmethod
-    def _add_contour_points(contour: np.array): 
+    def _add_contour_points(contour):
+        """
+        Add points to a contour to smooth it.
+
+        - contour: The contour as a numpy array.
+
+        Returns:
+        - The contour with points added as a numpy array.
+        """
         new_contour = []
 
         contour = tuple(map(tuple, contour)) 
@@ -236,8 +346,14 @@ class STLParser:
 
         return np.array(new_contour)
 
-    def save_image(self, scale_factor: float = 1, figsize: tuple = (3.9, 3.75), dpi: int = 80): 
+    def save_image(self, scale_factor=1, figsize=(3.9, 3.75), dpi=80):
+        """
+        Save an image of the STL mesh.
 
+        - scale_factor: The scale factor for the image.
+        - figsize: The size of the figure.
+        - dpi: The resolution of the image.
+        """
         if not self.parsing_complete or os.path.exists(self.dst_path):
             return
 
@@ -264,4 +380,4 @@ class STLParser:
         plt.gca().spines['left'].set_color(STLParser.TEXT_COLOR)
         plt.gca().spines['right'].set_color(STLParser.TEXT_COLOR)
 
-        plt.savefig(self.dst_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi) 
+        plt.savefig(self.dst_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
