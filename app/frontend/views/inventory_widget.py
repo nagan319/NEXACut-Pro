@@ -73,6 +73,9 @@ class InventoryWidget(WidgetTemplate):
         self._update_add_button_text()
 
     def add_new_plate(self):
+        """
+        Add new plate to data list.
+        """
         if self.image_editor_active:
             return
         if self._get_plate_amount() >= self.plate_limit:
@@ -91,46 +94,57 @@ class InventoryWidget(WidgetTemplate):
         self._file_preview_widget.append_widgets([new_plate_widget])
         self._update_add_button_text()       
         self.logger.info(f"@{self.__class__.__name__}: New plate added successfully.")
-
-    def _get_idx_of_filename(self, filename: str): # is this by id already?
+    
+    def _get_plate_amount(self) -> int:
         """
-        Get index of plate in list of stock by filename.
+        Get amount of plates in data list.
+        """
+        return len(self.plate_data)  
+
+    def _get_idx_of_plate_in_list(self, id: int):
+        """
+        Get index of plate in data list by id.
         """
         for idx, dict in enumerate(self.plate_data):
-            if dict['filename'] == filename: 
+            if dict['id'] == id: 
                 return idx
         return -1
 
-    def _get_plate_amount(self) -> int:
-        return len(self.plate_data)  
-
     def _update_add_button_text(self):
+        """
+        Update button based on amount of parts and whether or not the plate limit is reached.
+        """
         if self._get_plate_amount() >= self.plate_limit:
             Style.apply_stylesheet(self._add_new_button, "generic-button-red.css")
         else:
             Style.apply_stylesheet(self._add_new_button, "generic-button.css")
         self._add_new_button.setText(f"Add New ({self._get_plate_amount()}/{self.plate_limit})")
 
-    def __on_plate_import_image_requested__(self, filename: str):
+    def __on_plate_import_image_requested__(self, id: int):
         if self.image_editor_active:
             return
-
-        self.image_editor_active = True
-        self._create_image_edit_window(filename)
-
-    def _create_image_edit_window(self, filename: str): 
         
-        plate_idx = self._get_idx_of_filename(filename)
+        self.image_editor_active = True
+        self._create_image_edit_window(id)
+
+    def _create_image_edit_window(self, id: int): 
+        """
+        Initialize ImageEditorWindow for plate with a given id.
+        """
+        self.logger.info(f"@{self.__class__.__name__}: Initializing image editor for plate #{str(id)}...")
+        plate_idx = self._get_idx_of_plate_in_list(id)
         plate_w = self.plate_data[plate_idx]['width_(x)'] 
         plate_h = self.plate_data[plate_idx]['height_(y)']
-        self.image_editor = ImageEditorWindow(filename, plate_w, plate_h) 
+        self.image_editor = ImageEditorWindow(id, plate_w, plate_h) 
         self.image_editor.imageEditorClosed.connect(self.__on_image_editor_closed__)
 
-    def __on_image_editor_closed__(self, filename: str, contours: list): 
-        plate_idx = self._get_idx_of_filename(filename)
+    def __on_image_editor_closed__(self, id: int, contours: list): 
+        self.logger.info(f"@{self.__class__.__name__}: Saving data for plate #{str(id)}...")
+        plate_idx = self._get_idx_of_plate_in_list(id)
         self.plate_data[plate_idx]['contours'] = self._serialize_contours(contours)
         PlateUtil.save_preview_image(self.plate_data[plate_idx])
         self.plate_widgets[plate_idx].update_image_preview()
+        self.logger.info(f"@{self.__class__.__name__}: Plate contours saved successfully.")
         self.image_editor_active = False
 
     def _serialize_contours(self, contours: list):
@@ -139,11 +153,14 @@ class InventoryWidget(WidgetTemplate):
             serialized.append(contour.tolist())
         return serialized
 
-    def __on_plate_delete_requested__(self, filename: str):
+    def __on_plate_delete_requested__(self, id: int):
+        """
+        Removes plate from data, deleting preview path.
+        """
         if self.image_editor_active:
             return
 
-        index = self._get_idx_of_filename(filename)
+        index = self._get_idx_of_plate_in_list(id)
 
         file_processor = FileProcessor()
         png_path = self.plate_data[index]['preview_path']

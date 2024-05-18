@@ -101,7 +101,7 @@ class ImageFeatureWidget(QWidget):
 
     def _selection_active(self):
         return (self.image_converter.features.selected_corner_idx is not None) \
-            or (self.image_converter.features.selected_contour is not None)
+            or (self.image_converter.features.selected_contour_idx is not None)
 
     def _update_mode(self):
         if len(self.image_converter.features.corners) < 4:

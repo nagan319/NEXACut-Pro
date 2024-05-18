@@ -14,12 +14,13 @@ class ImageEditorWindow(QMainWindow):
  
     PIXMAP_HEIGHT = 600
 
-    imageEditorClosed = pyqtSignal(str, list)
+    imageEditorClosed = pyqtSignal(int, list)
 
-    def __init__(self, filename: str, plate_w: float, plate_h: float):
+    def __init__(self, plate_index: int, plate_w: float, plate_h: float):
         super().__init__()
 
-        self.filename = filename
+        self.plate_index = plate_index
+        self.filename = str(plate_index)+'.png'
         self.image_converter = ImageConverter(IMAGE_PREVIEW_DATA_PATH, plate_w, plate_h, self.PIXMAP_HEIGHT)
 
         self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
@@ -40,4 +41,4 @@ class ImageEditorWindow(QMainWindow):
 
     def closeEvent(self, event):
         contours = self.image_converter.get_finalized_contours()
-        self.imageEditorClosed.emit(self.filename, contours)
+        self.imageEditorClosed.emit(self.plate_index, contours)

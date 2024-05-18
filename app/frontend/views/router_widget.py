@@ -67,11 +67,14 @@ class RouterWidget(WidgetTemplate):
 
     def _get_router_amount(self) -> int:
         """
-        Get amount of routers in list.
+        Get amount of routers in data list.
         """
         return len(self.router_data) 
 
     def _get_router_list_idx(self, id: int) -> int:
+        """
+        Get index of router in data list by id.
+        """
         for i, router in enumerate(self.router_data):
             if router['id'] == id:
                 return i
@@ -79,7 +82,7 @@ class RouterWidget(WidgetTemplate):
 
     def add_new_router(self):
         """
-        Add new router to list, create new widget.
+        Add new router to data, create new widget.
         """
         if self._get_router_amount() >= self.router_limit:
             return
