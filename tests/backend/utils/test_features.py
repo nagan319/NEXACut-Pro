@@ -14,17 +14,5 @@ def test_features_init_valid():
     assert np.array_equal(features.plate_contour, plate_contour)
     assert features.other_contours == other_contours
     assert features.corners == corners
-    assert features.selected_contour == selected_contour
-    assert features.selected_corner == selected_corner
-
-def test_features_init_with_invalid_types():
-    plate_contour = "invalid" 
-    other_contours = "invalid"  
-    corners = "invalid"  
-    selected_contour = "invalid"  
-    selected_corner = "invalid"  
-
-    with pytest.raises(TypeError):
-        features = Features(plate_contour, other_contours, corners, selected_contour, selected_corner)
-
-    assert 'features' not in locals()
+    assert features.selected_contour_idx == selected_contour
+    assert features.selected_corner_idx == selected_corner

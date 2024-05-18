@@ -1,6 +1,8 @@
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
+import logging
+
 from ..utils.style import Style
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
@@ -12,41 +14,49 @@ from ...backend.utils.file_processor import FileProcessor
 from ...config import ROUTER_PREVIEW_DATA_PATH
 
 class RouterWidget(WidgetTemplate):
-
+    """
+    Tab for managing CNC routers.
+    """
     def __init__(self, router_data: list, router_limit: int):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.StreamHandler())
+        self.logger.info(f"@{self.__class__.__name__}: Initializing router widget...")
         super().__init__()
 
-        self.router_util = RouterUtil(ROUTER_PREVIEW_DATA_PATH)
         self.router_data = router_data
         self.router_limit = router_limit
 
-        self.__init_gui__()
+        self._setup_ui()
+        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
 
-    def __init_gui__(self):
-
+    def _setup_ui(self):
+        """
+        Initialize widget ui.
+        """
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
-        router_widgets = [RouterFileWidget(self.router_util, router) for router in self.router_data]
+        router_widgets = [RouterFileWidget(router) for router in self.router_data]
 
         for widget in router_widgets:
             widget.deleteRequested.connect(self.__on_router_delete_requested__)
 
-        self.__file_preview_widget = WidgetViewer(1, 1, router_widgets) 
+        self._file_preview_widget = WidgetViewer(1, 1, router_widgets) 
 
         self.__add_new_button_wrapper = QWidget()
         self.__add_new_button_wrapper_layout = QHBoxLayout()
 
-        self.__add_new_button = QPushButton()
-        Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.clicked.connect(self.add_new_router)
+        self._add_new_button = QPushButton()
+        Style.apply_stylesheet(self._add_new_button, "generic-button.css")
+        self._add_new_button.clicked.connect(self.add_new_router)
 
         self.__add_new_button_wrapper_layout.addStretch(2)
-        self.__add_new_button_wrapper_layout.addWidget(self.__add_new_button, 1)
+        self.__add_new_button_wrapper_layout.addWidget(self._add_new_button, 1)
         self.__add_new_button_wrapper_layout.addStretch(2)
         self.__add_new_button_wrapper.setLayout(self.__add_new_button_wrapper_layout)
 
-        main_layout.addWidget(self.__file_preview_widget, 7)
+        main_layout.addWidget(self._file_preview_widget, 7)
         main_layout.addWidget(self.__add_new_button_wrapper, 1)
         main_widget.setLayout(main_layout)
 
@@ -56,44 +66,56 @@ class RouterWidget(WidgetTemplate):
         self.update_add_button_text()
 
     def _get_router_amount(self) -> int:
+        """
+        Get amount of routers in list.
+        """
         return len(self.router_data) 
 
+    def _get_router_list_idx(self, id: int) -> int:
+        for i, router in enumerate(self.router_data):
+            if router['id'] == id:
+                return i
+        return -1
+
     def add_new_router(self):
+        """
+        Add new router to list, create new widget.
+        """
         if self._get_router_amount() >= self.router_limit:
             return
         
-        new_router_data = self.router_util.get_new_router(self.router_data)
+        self.logger.info(f"@{self.__class__.__name__}: Adding new router...")
+        new_router_data = RouterUtil.get_new_router(self.router_data)
         self.router_data.append(new_router_data)
         
-        self.router_util.save_router_preview(new_router_data)
+        RouterUtil.save_router_preview(new_router_data)
 
-        new_router_widget = RouterFileWidget(self.router_util, new_router_data)
+        self.logger.info(f"@{self.__class__.__name__}: Creating widget for new router...")
+        new_router_widget = RouterFileWidget(new_router_data)
         new_router_widget.deleteRequested.connect(self.__on_router_delete_requested__)
 
-        self.__file_preview_widget.append_widgets([new_router_widget])
+        self._file_preview_widget.append_widgets([new_router_widget])
         self.update_add_button_text() 
-
+        self.logger.info(f"@{self.__class__.__name__}: New router added successfully.")
 
     def update_add_button_text(self):
-        if self._get_router_amount() >= self.router_limit:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button-red.css")
-        else:
-            Style.apply_stylesheet(self.__add_new_button, "generic-button.css")
-        self.__add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.router_limit})")
+        """
+        Update button based on amount of parts and whether or not the router limit is reached.
+        """
+        stylesheet = "generic-button-red.css" if self._get_router_amount() >= self.router_limit else "generic-button.css"
+        Style.apply_stylesheet(self._add_new_button, stylesheet)
+        self._add_new_button.setText(f"Add New ({self._get_router_amount()}/{self.router_limit})")
 
-    def _get_idx_of_filename(self, filename: str):
-        for idx, dict in enumerate(self.router_data):
-            if dict['filename'] == filename: 
-                return idx
-        return -1
+    def __on_router_delete_requested__(self, id: int):
+        """
+        Removes router from data, deleting preview path.
+        """
+        self.logger.info(f"@{self.__class__.__name__}: Removing router #{str(id)}.")
+        filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, str(id)+'.png')
+        FileProcessor.remove_file(filepath)
 
-    def __on_router_delete_requested__(self, filename: str):
-        index = self._get_idx_of_filename(filename)
-
-        filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, filename)
-        file_processor = FileProcessor()
-        file_processor.remove_file(filepath)
-
-        self.router_data.pop(index)
-        self.__file_preview_widget.pop_widget(index)
+        router_list_idx = self._get_router_list_idx(id)
+        self.router_data.pop(router_list_idx)
+        self._file_preview_widget.pop_widget(router_list_idx)
         self.update_add_button_text()
+        self.logger.info(f"@{self.__class__.__name__}: Router #{str(id)} removed successfully.")

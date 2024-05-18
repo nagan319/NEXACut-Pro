@@ -2,12 +2,21 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtGui import QPixmap
 
-from ..utils.style import apply_stylesheet
+import logging
+
+from ..utils.style import Style
 
 from ...config import LOGO_PATH
 
 class HomeWidget(QWidget):
+    """
+    Home tab containing app logo and version information.
+    """
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.StreamHandler())
+        self.logger.info(f"@{self.__class__.__name__}: Initializing home widget...")
         super().__init__()
 
         layout = QVBoxLayout()
@@ -19,7 +28,7 @@ class HomeWidget(QWidget):
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         app_description_label = QLabel("Version 0.0.0   Created by nagan__319")
-        apply_stylesheet(app_description_label, "small-text.css")
+        Style.apply_stylesheet(app_description_label, "small-text.css")
 
         layout.addStretch()
         layout.addWidget(logo_label)
@@ -27,3 +36,4 @@ class HomeWidget(QWidget):
         layout.addWidget(app_description_label)
 
         self.setLayout(layout)
+        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")

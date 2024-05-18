@@ -20,7 +20,6 @@ class InputParser:
         Returns:
         - Floating point value in millimeters.
         """
-
         unit_conversion = {'in': 25.4, 'feet': 304.8, 'ft': 304.8, 'mm': 1, 'cm': 10}
 
         if text.replace('.', '').isdigit():

@@ -54,28 +54,28 @@ class STLParser:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"Initializing STLParser with source path: {src_path}")
+        self.logger.info(f"@{self.__class__.__name__}: Initializing STLParser with source path: {src_path}")
 
         self.parsing_complete = False
 
         if not os.path.exists(src_path):
-            self.logger.error(f"STL file {src_path} does not exist") 
-            raise FileNotFoundError(f"STL file {src_path} does not exist") 
+            self.logger.error(f"@{self.__class__.__name__}: STL file {src_path} does not exist") 
+            raise FileNotFoundError(f"@{self.__class__.__name__}: STL file {src_path} does not exist") 
         
         if not STLParser.stl_file_valid(src_path):
-            self.logger.error(f"STL file {src_path} is invalid")
-            raise ValueError(f"STL file {src_path} is invalid")
+            self.logger.error(f"@{self.__class__.__name__}: STL file {src_path} is invalid")
+            raise ValueError(f"@{self.__class__.__name__}: STL file {src_path} is invalid")
 
         if not os.path.exists(dst_folder):
-            self.logger.error(f"Destination folder path {dst_folder} does not exist")
-            raise FileNotFoundError(f"Destination folder path {dst_folder} does not exist")
+            self.logger.error(f"@{self.__class__.__name__}: Destination folder path {dst_folder} does not exist")
+            raise FileNotFoundError(f"@{self.__class__.__name__}: Destination folder path {dst_folder} does not exist")
 
         self.stl_filepath: str = src_path
         self.stl_mesh: np.array = mesh.Mesh.from_file(self.stl_filepath)
         self.stl_mesh_vector: np.array = np.array(self.stl_mesh.vectors)
         
         if not STLParser.stl_mesh_valid(self.stl_mesh_vector):
-            e = f"STL file {self.stl_filepath} must be in mesh vector format. Current shape is {self.stl_mesh_vector.shape}"
+            e = f"@{self.__class__.__name__}: STL file {self.stl_filepath} must be in mesh vector format. Current shape is {self.stl_mesh_vector.shape}"
             self.logger.error(e)
             raise ValueError(e)
 
@@ -85,15 +85,23 @@ class STLParser:
         """"
         Parses STL file and sets class attributes
         """
-        self.logger.info("Parsing STL file...")
+        self.logger.info(f"@{self.__class__.__name__}: Parsing STL file...")
+        self.logger.info(f"@{self.__class__.__name__}: Finding flat axis...")
         self.flat_axis: Axis = STLParser.get_flat_axis(self.stl_mesh_vector)
+        self.logger.info(f"@{self.__class__.__name__}: Calculating thickness...")
         self.thickness: float = STLParser.get_thickness(self.stl_mesh_vector, self.flat_axis)
+        self.logger.info(f"@{self.__class__.__name__}: Flattening mesh...")
         self.flattened_mesh: np.array = STLParser.get_flattened_mesh(self.stl_mesh_vector, self.flat_axis)
+        self.logger.info(f"@{self.__class__.__name__}: Finding outer edges...")
         self.outer_edges: List[EdgeShape] = STLParser.get_outer_edges(self.flattened_mesh, self.flat_axis)
+        self.logger.info(f"@{self.__class__.__name__}: Finding contours...")
         self.contours: List[np.array] = STLParser.get_contours(self.outer_edges)
+        self.logger.info(f"@{self.__class__.__name__}: Finding outermost contour...")
         self.outer_contour: np.array = STLParser.get_outermost_contour(self.contours)
+        self.logger.info(f"@{self.__class__.__name__}: Smoothing contour...")
         self.outer_contour = STLParser.get_smooth_contour(self.outer_contour)
         self.parsing_complete = True
+        self.logger.info(f"@{self.__class__.__name__}: Parsing complete.")
 
     @staticmethod
     def stl_file_valid(filepath: str) -> bool:
@@ -357,6 +365,8 @@ class STLParser:
         if not self.parsing_complete or os.path.exists(self.dst_path):
             return
 
+        self.logger.info(f"@{self.__class__.__name__}: Creating plot for preview image...")
+
         plt.figure(figsize=figsize)
 
         for edge in self.outer_edges:
@@ -380,5 +390,7 @@ class STLParser:
         plt.gca().spines['left'].set_color(STLParser.TEXT_COLOR)
         plt.gca().spines['right'].set_color(STLParser.TEXT_COLOR)
 
+        self.logger.info(f"@{self.__class__.__name__}: Saving preview image...")
         plt.savefig(self.dst_path, bbox_inches='tight', facecolor='#FFFFFF', dpi=dpi)
+        self.logger.info(f"@{self.__class__.__name__}: Image saved to {self.dst_path}.")
         

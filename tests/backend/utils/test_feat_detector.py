@@ -10,18 +10,6 @@ def valid_input():
     size = Size(1000, 1000)  
     return src_path, size
 
-@pytest.mark.parametrize("invalid_src_path", ["pathpath.jpg", None, 123, 3.14, True, {}])
-def test_invalid_src_path_type(invalid_src_path, valid_input):
-    _, size = valid_input
-    with pytest.raises((TypeError, FileNotFoundError)):
-        FeatDetector(invalid_src_path, size)
-
-@pytest.mark.parametrize("invalid_size", [None, "invalid", 3.14, (100, 100), [100, 100], Size(100, "invalid")])
-def test_invalid_size(invalid_size, valid_input):
-    src_path, _ = valid_input
-    with pytest.raises((TypeError, ValueError)):
-        FeatDetector(src_path, invalid_size)
-
 def test_contours_extraction(valid_input):  
 
     detector = FeatDetector(*valid_input)

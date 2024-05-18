@@ -1,6 +1,8 @@
 import os
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
+import logging
+
 from ..utils.style import Style
 from ..utils.util_widgets.widget_template import WidgetTemplate
 from ..utils.util_widgets.widget_viewer import WidgetViewer
@@ -13,8 +15,18 @@ from ...backend.utils.file_processor import FileProcessor
 from ...config import PLATE_PREVIEW_DATA_PATH
 
 class InventoryWidget(WidgetTemplate):
+    """
+    Tab for handling CNC stock.
 
+    ### Parameters:
+    - plate_data: List of plates currently in inventory.
+    - plate_limit: Maximum number of plates able to be stored in app.
+    """
     def __init__(self, plate_data: list, plate_limit: int):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.StreamHandler())
+        self.logger.info(f"@{self.__class__.__name__}: Initializing inventory widget...")
         super().__init__()
 
         self.plate_data = plate_data
@@ -22,9 +34,12 @@ class InventoryWidget(WidgetTemplate):
         self.image_editor_active = False
 
         self._setup_ui()
+        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
 
     def _setup_ui(self):
-
+        """
+        Initialize widget ui.
+        """
         main_widget = QWidget()
         main_layout = QVBoxLayout()
         
@@ -60,20 +75,27 @@ class InventoryWidget(WidgetTemplate):
     def add_new_plate(self):
         if self.image_editor_active:
             return
+        if self._get_plate_amount() >= self.plate_limit:
+            return 
+        
+        self.logger.info(f"@{self.__class__.__name__}: Adding new plate...")
 
-        if self._get_plate_amount() < self.plate_limit:
-            new_plate_data = PlateUtil.get_new_plate(self.plate_data)
-            self.plate_data.append(new_plate_data)
-            
-            PlateUtil.save_preview_image(new_plate_data)
+        new_plate_data = PlateUtil.get_new_plate(self.plate_data)
+        PlateUtil.save_preview_image(new_plate_data)
+        self.plate_data.append(new_plate_data)
 
-            new_plate_widget = PlateFileWidget(new_plate_data)
-            new_plate_widget.deleteRequested.connect(self.__on_plate_delete_requested__)
-            new_plate_widget.importRequested.connect(self.__on_plate_import_image_requested__)
-            self._file_preview_widget.append_widgets([new_plate_widget])
-            self._update_add_button_text()       
+        self.logger.info(f"@{self.__class__.__name__}: Creating widget for new plate...")
+        new_plate_widget = PlateFileWidget(new_plate_data)
+        new_plate_widget.deleteRequested.connect(self.__on_plate_delete_requested__)
+        new_plate_widget.importRequested.connect(self.__on_plate_import_image_requested__)
+        self._file_preview_widget.append_widgets([new_plate_widget])
+        self._update_add_button_text()       
+        self.logger.info(f"@{self.__class__.__name__}: New plate added successfully.")
 
-    def _get_idx_of_filename(self, filename: str):
+    def _get_idx_of_filename(self, filename: str): # is this by id already?
+        """
+        Get index of plate in list of stock by filename.
+        """
         for idx, dict in enumerate(self.plate_data):
             if dict['filename'] == filename: 
                 return idx

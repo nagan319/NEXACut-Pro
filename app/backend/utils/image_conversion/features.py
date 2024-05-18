@@ -2,33 +2,42 @@ import math
 import os
 import numpy as np
 import cv2
+from typing import List, Tuple, Union
 
 from .utils import Size, Colors
 
 class Features:
+    """
+    Class for storing detected plate features (for use with non-flattened image).
 
-    def __init__(self, plate_contour=None, other_contours=None, corners=None, selected_contour=None, selected_corner=None):
-
-        if plate_contour is not None and not isinstance(plate_contour, np.ndarray):
-            raise TypeError("plate_contour must be a numpy.ndarray or None")
-        if other_contours is not None and not isinstance(other_contours, list):
-            raise TypeError("other_contours must be a list or None")
-        if corners is not None and not isinstance(corners, list):
-            raise TypeError("corners must be a list or None")
-        if selected_contour is not None and not isinstance(selected_contour, int):
-            raise TypeError("selected_contour must be an int or None")
-        if selected_corner is not None and not isinstance(selected_corner, int):
-            raise TypeError("selected_corner must be an int or None")
-        
+    ### Parameters:
+    - plate_contour: Main contour of plate.
+    - other_contours: Other found contours.
+    - corners: Plate corners.
+    - selected_contour: Index of selected contour.
+    - selected_corner: Index of selected corner.
+    """
+    def __init__(self, plate_contour: np.array=None, other_contours: List[np.array]=None, corners: List[tuple]=None, selected_contour_idx: int=None, selected_corner_idx: int=None):
         self.plate_contour: np.ndarray = plate_contour
-        self.other_contours: list = other_contours
-        self.corners: list = corners
-        self.selected_contour: int = selected_contour
-        self.selected_corner: int = selected_corner
-
+        self.other_contours: List[np.array] = other_contours
+        self.corners: List[tuple] = corners
+        self.selected_contour_idx: int = selected_contour_idx
+        self.selected_corner_idx: int = selected_corner_idx
 
 class FeatDetector:
+    """
+    Class for retrieving critical features from plate image. Saves features in Features class as an attribute.
 
+    ### Parameters:
+    - src_path: Source image filepath.
+    - size: Size of image.    
+
+    ### Attributes:
+    - features: Found features.
+    
+    ### Raises:
+    - FileNotFoundError, ValueError for invalid input parameters.
+    """
     MIN_CTR_AREA = 1000
     MIN_CTR_DIST_FROM_EDGE = 100
 
@@ -37,40 +46,29 @@ class FeatDetector:
     MIN_CORNER_SEPARATION = 1000
 
     def __init__(self, src_path: str, size: Size):
-
-        if not isinstance(src_path, str):
-            raise TypeError("Path must be string")
-
-        if not os.path.isfile(src_path):
+        if not os.path.exists(src_path):
             raise FileNotFoundError(f"File '{src_path}' not found.")
-
-        image = cv2.imread(src_path, cv2.IMREAD_GRAYSCALE)
-
-        if not isinstance(size, Size):
-            raise TypeError("Size must be an instance of Size.")
-    
         if size.w <= 0 or size.h <= 0:
             raise ValueError("Size dimensions must be positive numbers.")
 
+        image = cv2.imread(src_path, cv2.IMREAD_GRAYSCALE)
         if image is None:
             raise ValueError(f"Unable to read image file '{src_path}'.")
 
         max_contour, other_contours = self._get_contours(image, size)
-
-        if max_contour is not None:
-            corners = self._get_corners(max_contour)
-        else:
-            corners = None  
+        corners = self._get_corners(max_contour) if max_contour is not None else None
 
         self.features = Features(plate_contour=max_contour, other_contours=other_contours, corners=corners)
     
-    def _get_contours(self, image, size: Size):
-
+    def _get_contours(self, image, size: Size) -> Tuple[np.array, List[np.array]]:
+        """
+        Finds contours that exceed area threshold and are a certain threshold away from the edge of the image. 
+        """
         contours, _ = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-        filtered_contours = []
+        filtered_contours: List[np.array] = []
 
         for contour in contours:
-            area = cv2.contourArea(contour)
+            area: float = cv2.contourArea(contour)
 
             if area < self.MIN_CTR_AREA:
                 continue
@@ -104,17 +102,25 @@ class FeatDetector:
 
         return max_contour, other_contours
 
-    def _get_corners(self, max_contour: np.ndarray):
+    def _get_corners(self, max_contour: np.ndarray) -> List[Tuple[float, float]]:
+        """
+        Finds plate corners using derivatives and norm product.
 
-        corners = []
+        Arguments:
+        - max_contour: Plate contour.
+        
+        Returns:
+        - List of found corners stored as tuples of floats.
+        """
+        corners: List[Tuple[float, float]] = []
         length = len(max_contour)
 
         for i, point in enumerate(max_contour):
 
             delta: int = self.CORNER_DIST_DELTA
 
-            prev_idx = (i - delta) % length 
-            next_idx = (i + delta) % length
+            prev_idx: int = (i - delta) % length 
+            next_idx: int = (i + delta) % length
 
             x_prev, y_prev = max_contour[prev_idx][0]
             x, y = point[0]
@@ -143,11 +149,17 @@ class FeatDetector:
                 filtered_corners.append(corners[i])
 
         return filtered_corners
-    
-
 
 class FeatDisplay: 
+    """
+    Saves features as an image.
 
+    ### Parameters:
+    - dst_path: Image save path.
+    - size: Output image resolution.
+    - features: Features to be mapped.
+    - colors: Color palette to be used when saving.
+    """
     def __init__(self, dst_path: str, size: Size, features: Features, colors: Colors):
 
         self.dst_path = dst_path
@@ -156,7 +168,9 @@ class FeatDisplay:
         self.colors = colors
     
     def save_features(self):
-
+        """
+        Saves images with properties specified at initialization.
+        """
         canvas = np.zeros((self.size.h, self.size.w, 3), dtype=np.uint8)
         canvas[:, :] = list(self.colors.background_color)
 
@@ -166,12 +180,12 @@ class FeatDisplay:
         if self.features.other_contours is not None:
             cv2.drawContours(canvas, self.features.other_contours, -1, self.colors.contour_color, thickness=8)
 
-        if self.features.selected_contour is not None:
-            cv2.drawContours(canvas, self.features.other_contours, self.features.selected_contour, self.colors.selected_element_color, thickness=12)
+        if self.features.selected_contour_idx is not None:
+            cv2.drawContours(canvas, self.features.other_contours, self.features.selected_contour_idx, self.colors.selected_element_color, thickness=12)
 
         for i, corner in enumerate(self.features.corners):
 
-            if i == self.features.selected_corner:
+            if i == self.features.selected_corner_idx:
                 color = self.colors.selected_element_color
                 thickness = 12
             else:
@@ -185,7 +199,9 @@ class FeatDisplay:
 
 
 class FeatEditor:
-
+    """
+    Class for manually editing features.
+    """
     def __init__(self, size: Size, features: Features, pixmap_height: int):
         self.size = size
         self.pixmap_height = pixmap_height
@@ -193,27 +209,27 @@ class FeatEditor:
         self.features = features
 
     def select_corner(self, n: int):
-        self.features.selected_corner = n
+        self.features.selected_corner_idx = n
     
     def unselect_corner(self):
-        self.features.selected_corner = None
+        self.features.selected_corner_idx = None
 
     def select_contour(self, n: int):
-        self.features.selected_contour = n
+        self.features.selected_contour_idx = n
 
     def unselect_contour(self):
-        self.features.selected_contour = None
+        self.features.selected_contour_idx = None
 
     def remove_corner(self):
-        if self.features.selected_corner is None:
+        if self.features.selected_corner_idx is None:
             return
-        self.features.corners.pop(self.features.selected_corner)
+        self.features.corners.pop(self.features.selected_corner_idx)
         self.unselect_corner()
 
     def remove_contour(self):
-        if self.features.selected_contour is None:
+        if self.features.selected_contour_idx is None:
             return
-        self.features.other_contours.pop(self.features.selected_contour)
+        self.features.other_contours.pop(self.features.selected_contour_idx)
         self.unselect_contour()
 
     def add_corner(self, coordinates: tuple):

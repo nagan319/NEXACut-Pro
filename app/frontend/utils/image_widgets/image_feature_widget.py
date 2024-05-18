@@ -96,11 +96,11 @@ class ImageFeatureWidget(QWidget):
         return save_button_wrapper
 
     def _unselect_features(self):
-        self.image_converter.features.selected_corner = None
-        self.image_converter.features.selected_contour = None
+        self.image_converter.features.selected_corner_idx = None
+        self.image_converter.features.selected_contour_idx = None
 
     def _selection_active(self):
-        return (self.image_converter.features.selected_corner is not None) \
+        return (self.image_converter.features.selected_corner_idx is not None) \
             or (self.image_converter.features.selected_contour is not None)
 
     def _update_mode(self):
@@ -144,8 +144,8 @@ class ImageFeatureWidget(QWidget):
     
     def on_delete_button_pressed(self):
 
-        corner = self.image_converter.features.selected_corner
-        contour = self.image_converter.features.selected_contour
+        corner = self.image_converter.features.selected_corner_idx
+        contour = self.image_converter.features.selected_contour_idx
 
         if corner is None and contour is None:
             return

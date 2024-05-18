@@ -3,6 +3,9 @@ General:
 - use pathmanager class instead of list of constants
 - consider merging shared methods of plate and router class / adding parent class
 
+Images:
+- Turn FeatDisplay into static class
+
 Title widget:
 - Draw new logo that fits updated gui
 

@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget
 from PyQt6.QtGui import QFontDatabase
 
+import logging
+
 from ..utils.util_widgets.menu_widget import Menu
 from ..utils.util_widgets.content_viewer import ContentViewer
 
@@ -14,6 +16,7 @@ from ...backend.data_mgr import DataManager
 from ...config import MIN_WIDTH, MIN_HEIGHT, APP_TITLE, MAIN_FONT_PATH, PART_IMPORT_LIMIT, ROUTER_LIMIT, PLATE_LIMIT
 
 class MainWindow(QMainWindow):
+
     MENU_BUTTONS = [
         "Home", 
         "Import Part Files", 
@@ -24,6 +27,10 @@ class MainWindow(QMainWindow):
     ]
 
     def __init__(self, data_manager: DataManager): 
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.addHandler(logging.StreamHandler())
+        self.logger.info(f"@{self.__class__.__name__}: Initializing main window...")
         super().__init__()
 
         self.setWindowTitle(APP_TITLE)
@@ -52,4 +59,4 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
-        self.menu.button_clicked.connect(content_viewer.set_view)
+        menu.button_clicked.connect(content_viewer.set_view)

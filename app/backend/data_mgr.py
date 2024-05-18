@@ -34,9 +34,9 @@ class DataManager:
         Attempts to load long term data from paths specified at initialization, raises exception if an error occurs. 
         """
         try:
-            self._user_preferences = self._get_user_preferences()
-            self._router_data = self._get_router_data()
-            self._plate_data = self._get_plate_data()
+            self.user_preferences = self._get_user_preferences()
+            self.router_data = self._get_router_data()
+            self.plate_data = self._get_plate_data()
         except Exception as e:
             self._logger.error(f"Error initializing long-term data: {e}")
 
@@ -44,7 +44,7 @@ class DataManager:
         """
         Initializes temporary data as empty lists.
         """
-        self._imported_parts = []
+        self.imported_parts = []
 
     def _get_user_preferences(self) -> dict:
         """
@@ -96,7 +96,7 @@ class DataManager:
         Saves user preferences to json file specified at initialization.
         """
         try:
-            FileProcessor.write_file(self._user_preference_file_path, self._user_preferences)
+            FileProcessor.write_file(self._user_preference_file_path, self.user_preferences)
         except Exception as e:
             self._logger.error(f"Error saving user preferences: {e}")
 
@@ -105,7 +105,7 @@ class DataManager:
         Saves router data to csv file specified at initialization.
         """
         try:
-            FileProcessor.write_file(self._router_data_path, self._router_data)
+            FileProcessor.write_file(self._router_data_path, self.router_data)
         except Exception as e:
             self._logger.error(f"Error saving router data: {e}")
 
@@ -114,7 +114,7 @@ class DataManager:
         Saves plate data to csv file specified at initialization.
         """
         try:
-            FileProcessor.write_file(self._plate_data_path, self._plate_data)
+            FileProcessor.write_file(self._plate_data_path, self.plate_data)
         except Exception as e:
             self._logger.error(f"Error saving plate data: {e}")
 

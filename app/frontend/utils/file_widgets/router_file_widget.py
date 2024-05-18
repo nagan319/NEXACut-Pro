@@ -8,13 +8,12 @@ from ....backend.utils.router_util import RouterUtil
 
 class RouterFileWidget(QWidget): 
     
-    deleteRequested = pyqtSignal(str) 
+    deleteRequested = pyqtSignal(int) 
 
-    def __init__(self, router_util: RouterUtil, router_data: dict): 
+    def __init__(self, router_data: dict): 
 
         super().__init__()
 
-        self.router_util = router_util
         self.data = router_data 
 
         self._setup_ui()
@@ -24,7 +23,7 @@ class RouterFileWidget(QWidget):
     def _setup_ui(self):
         layout = QHBoxLayout()
 
-        data_widget = DataWidget(self.data, self.router_util.editable_keys, self.router_util.value_ranges, True, False)
+        data_widget = DataWidget(self.data, RouterUtil.editable_keys(), RouterUtil.value_ranges(), True, False)
         data_widget.deleteRequested.connect(self.__on_delete_requested)
         data_widget.saveRequested.connect(self.__on_save_requested)
 
@@ -37,7 +36,7 @@ class RouterFileWidget(QWidget):
     # runtime functions
 
     def _update_preview(self):
-        self.router_util.save_router_preview(self.data)
+        RouterUtil.save_router_preview(self.data)
         self.preview_widget.update()
 
     def __on_save_requested(self, data):
@@ -45,4 +44,4 @@ class RouterFileWidget(QWidget):
         self._update_preview()
 
     def __on_delete_requested(self):
-        self.deleteRequested.emit(self.data['filename'])
+        self.deleteRequested.emit(self.data['id'])
