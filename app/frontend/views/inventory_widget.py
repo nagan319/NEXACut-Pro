@@ -24,9 +24,14 @@ class InventoryWidget(WidgetTemplate):
     """
     def __init__(self, plate_data: list, plate_limit: int):
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"@{self.__class__.__name__}: Initializing inventory widget...")
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.debug(f"Initializing inventory widget...")
+
         super().__init__()
 
         self.plate_data = plate_data
@@ -34,7 +39,7 @@ class InventoryWidget(WidgetTemplate):
         self.image_editor_active = False
 
         self._setup_ui()
-        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
+        self.logger.debug(f"Initialization complete.")
 
     def _setup_ui(self):
         """
@@ -81,19 +86,19 @@ class InventoryWidget(WidgetTemplate):
         if self._get_plate_amount() >= self.plate_limit:
             return 
         
-        self.logger.info(f"@{self.__class__.__name__}: Adding new plate...")
+        self.logger.debug(f"Adding new plate...")
 
         new_plate_data = PlateUtil.get_new_plate(self.plate_data)
         PlateUtil.save_preview_image(new_plate_data)
         self.plate_data.append(new_plate_data)
 
-        self.logger.info(f"@{self.__class__.__name__}: Creating widget for new plate...")
+        self.logger.debug(f"Creating widget for new plate...")
         new_plate_widget = PlateFileWidget(new_plate_data)
         new_plate_widget.deleteRequested.connect(self.__on_plate_delete_requested__)
         new_plate_widget.importRequested.connect(self.__on_plate_import_image_requested__)
         self._file_preview_widget.append_widgets([new_plate_widget])
         self._update_add_button_text()       
-        self.logger.info(f"@{self.__class__.__name__}: New plate added successfully.")
+        self.logger.debug(f"New plate added successfully.")
     
     def _get_plate_amount(self) -> int:
         """
@@ -131,7 +136,7 @@ class InventoryWidget(WidgetTemplate):
         """
         Initialize ImageEditorWindow for plate with a given id.
         """
-        self.logger.info(f"@{self.__class__.__name__}: Initializing image editor for plate #{str(id)}...")
+        self.logger.debug(f"Initializing image editor for plate #{str(id)}...")
         plate_idx = self._get_idx_of_plate_in_list(id)
         plate_w = self.plate_data[plate_idx]['width_(x)'] 
         plate_h = self.plate_data[plate_idx]['height_(y)']
@@ -139,12 +144,12 @@ class InventoryWidget(WidgetTemplate):
         self.image_editor.imageEditorClosed.connect(self.__on_image_editor_closed__)
 
     def __on_image_editor_closed__(self, id: int, contours: list): 
-        self.logger.info(f"@{self.__class__.__name__}: Saving data for plate #{str(id)}...")
+        self.logger.debug(f"Saving data for plate #{str(id)}...")
         plate_idx = self._get_idx_of_plate_in_list(id)
         self.plate_data[plate_idx]['contours'] = self._serialize_contours(contours)
         PlateUtil.save_preview_image(self.plate_data[plate_idx])
         self.plate_widgets[plate_idx].update_image_preview()
-        self.logger.info(f"@{self.__class__.__name__}: Plate contours saved successfully.")
+        self.logger.debug(f"Plate contours saved successfully.")
         self.image_editor_active = False
 
     def _serialize_contours(self, contours: list):

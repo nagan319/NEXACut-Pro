@@ -19,16 +19,21 @@ class RouterWidget(WidgetTemplate):
     """
     def __init__(self, router_data: list, router_limit: int):
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"@{self.__class__.__name__}: Initializing router widget...")
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.debug(f"Initializing router widget...")
+        
         super().__init__()
 
         self.router_data = router_data
         self.router_limit = router_limit
 
         self._setup_ui()
-        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
+        self.logger.debug(f"Initialization complete.")
 
     def _setup_ui(self):
         """
@@ -87,19 +92,19 @@ class RouterWidget(WidgetTemplate):
         if self._get_router_amount() >= self.router_limit:
             return
         
-        self.logger.info(f"@{self.__class__.__name__}: Adding new router...")
+        self.logger.debug(f"Adding new router...")
         new_router_data = RouterUtil.get_new_router(self.router_data)
         self.router_data.append(new_router_data)
         
         RouterUtil.save_router_preview(new_router_data)
 
-        self.logger.info(f"@{self.__class__.__name__}: Creating widget for new router...")
+        self.logger.debug(f"Creating widget for new router...")
         new_router_widget = RouterFileWidget(new_router_data)
         new_router_widget.deleteRequested.connect(self.__on_router_delete_requested__)
 
         self._file_preview_widget.append_widgets([new_router_widget])
         self.update_add_button_text() 
-        self.logger.info(f"@{self.__class__.__name__}: New router added successfully.")
+        self.logger.debug(f"New router added successfully.")
 
     def update_add_button_text(self):
         """
@@ -113,7 +118,7 @@ class RouterWidget(WidgetTemplate):
         """
         Removes router from data, deleting preview path.
         """
-        self.logger.info(f"@{self.__class__.__name__}: Removing router #{str(id)}.")
+        self.logger.debug(f"Removing router #{str(id)}.")
         filepath = os.path.join(ROUTER_PREVIEW_DATA_PATH, str(id)+'.png')
         FileProcessor.remove_file(filepath)
 
@@ -121,4 +126,4 @@ class RouterWidget(WidgetTemplate):
         self.router_data.pop(router_list_idx)
         self._file_preview_widget.pop_widget(router_list_idx)
         self.update_add_button_text()
-        self.logger.info(f"@{self.__class__.__name__}: Router #{str(id)} removed successfully.")
+        self.logger.debug(f"Router #{str(id)} removed successfully.")

@@ -28,9 +28,13 @@ class MainWindow(QMainWindow):
 
     def __init__(self, data_manager: DataManager): 
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"@{self.__class__.__name__}: Initializing main window...")
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.debug(f"Initializing main window...")
         super().__init__()
 
         self.setWindowTitle(APP_TITLE)

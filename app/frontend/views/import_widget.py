@@ -24,16 +24,20 @@ class ImportWidget(WidgetTemplate):
     """
     def __init__(self, imported_parts: List[dict], part_import_limit: int): # check format of imported parts
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"@{self.__class__.__name__}: Initializing import widget...")
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.debug(f"Initializing import widget...")
         super().__init__()
 
         self.imported_parts = imported_parts
         self.part_import_limit = part_import_limit
 
         self._setup_ui()
-        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
+        self.logger.debug(f"Initialization complete.")
     
     def _setup_ui(self):
         """
@@ -103,7 +107,7 @@ class ImportWidget(WidgetTemplate):
         if self._get_total_part_amount() >= self.part_import_limit:
             return
 
-        self.logger.info(f"@{self.__class__.__name__}: Importing files...")
+        self.logger.debug(f"Importing files...")
 
         max_files_at_once: int = 10 
         
@@ -131,7 +135,7 @@ class ImportWidget(WidgetTemplate):
                 continue
 
             try:
-                self.logger.info(f"@{self.__class__.__name__}: Importing file {filename}...")
+                self.logger.debug(f"Importing file {filename}...")
                 parser = STLParser(path, CAD_PREVIEW_DATA_PATH)
                 parser.parse_stl()
                 parser.save_image()
@@ -139,16 +143,16 @@ class ImportWidget(WidgetTemplate):
                 outer_contour = parser.outer_contour
                 png_location = parser.dst_path
 
-                self.logger.info(f"@{self.__class__.__name__}: Creating widget for file {filename}...")
+                self.logger.debug(f"Creating widget for file {filename}...")
                 preview_widget = STLFileWidget(filename, png_location)
                 preview_widget.deleteRequested.connect(self.__on_widget_delete_request__)
                 preview_widget.amountEdited.connect(self.__on_widget_amt_edited__)
                 widgets.append(preview_widget)
 
-                self.logger.info(f"@{self.__class__.__name__}: Saving {filename} to data...")
+                self.logger.debug(f"Saving {filename} to data...")
                 self._save_file_to_data(filename, outer_contour, 1) 
 
-                self.logger.info(f"@{self.__class__.__name__}: File {filename} imported successfully.")
+                self.logger.debug(f"File {filename} imported successfully.")
 
             except Exception as e:
                 continue
@@ -175,7 +179,7 @@ class ImportWidget(WidgetTemplate):
         """
         Logic for updating widget when a file is deleted from the preview list.
         """
-        self.logger.info(f"@{self.__class__.__name__}: Removing file {filename}...")
+        self.logger.debug(f"Removing file {filename}...")
         index = self._get_idx_of_filename(filename)
 
         filepath = os.path.join(CAD_PREVIEW_DATA_PATH, filename)
@@ -184,6 +188,6 @@ class ImportWidget(WidgetTemplate):
 
         self.imported_parts.pop(index)
         self._file_preview_widget.pop_widget(index)
-        self.logger.info(f"@{self.__class__.__name__}: File {filename} removed successfully.")
+        self.logger.debug(f"File {filename} removed successfully.")
         self._update_import_button_text()
 

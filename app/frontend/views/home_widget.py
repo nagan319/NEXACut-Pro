@@ -14,9 +14,14 @@ class HomeWidget(QWidget):
     """
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.addHandler(logging.StreamHandler())
-        self.logger.info(f"@{self.__class__.__name__}: Initializing home widget...")
+        if not self.logger.hasHandlers():
+            self.logger.setLevel(logging.DEBUG)
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            
+        self.logger.debug(f"Initializing home widget...")
         super().__init__()
 
         layout = QVBoxLayout()
@@ -36,4 +41,4 @@ class HomeWidget(QWidget):
         layout.addWidget(app_description_label)
 
         self.setLayout(layout)
-        self.logger.info(f"@{self.__class__.__name__}: Initialization complete.")
+        self.logger.debug(f"Initialization complete.")
